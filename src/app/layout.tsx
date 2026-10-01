@@ -14,13 +14,23 @@ const body = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-body", di
 const display = Sora({ subsets: ["latin"], variable: "--font-display-face", display: "swap", weight: ["600", "700", "800"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
+  metadataBase: safeBaseUrl(),
   title: { default: `${site.name} | Shipping Container Marketplace`, template: `%s | ${site.name}` },
   description: site.description,
   openGraph: { type: "website", siteName: site.name, title: `${site.name} | Shipping Container Marketplace`, description: site.description },
   twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true },
 };
+
+/** Never let a malformed APP_URL (e.g. missing https://) take down every page. */
+function safeBaseUrl() {
+  try {
+    return new URL(process.env.APP_URL ?? "http://localhost:3000");
+  } catch {
+    console.error(`[layout] Invalid APP_URL "${process.env.APP_URL}" — it must include https://`);
+    return new URL("http://localhost:3000");
+  }
+}
 
 export const viewport: Viewport = {
   themeColor: "#0a1128",
