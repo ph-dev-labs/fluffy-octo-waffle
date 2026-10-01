@@ -1,14 +1,13 @@
-// SQLite is used for local development. For production switch `provider` to
-// "postgresql" and point DATABASE_URL at a managed Postgres instance.
-// Status-like columns are plain strings (validated in TypeScript) so the schema
-// stays portable between SQLite and Postgres.
+// Postgres everywhere (Vercel can't host a SQLite file). Use a free Neon or
+// Supabase database; for migrations prefer the direct (non-pooled) URL.
+// Status-like columns are plain strings validated in TypeScript.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

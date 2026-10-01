@@ -5,16 +5,18 @@ Next.js 15 (App Router) · TypeScript · Tailwind v4 · Motion (Framer Motion) �
 ## Quick start
 
 ```bash
-cp .env.example .env          # then fill in PAYSTACK_SECRET_KEY and CRON_SECRET
+cp .env.example .env          # fill in DATABASE_URL (Postgres), PAYSTACK_SECRET_KEY, CRON_SECRET
 npm install
-npm run db:push               # create tables
-npm run db:seed               # sample inventory
+npm run db:migrate            # create tables
+npm run db:seed               # sample inventory (run once per database)
 npm run dev
 ```
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` / `build` / `start` | Next.js |
+| `npm run dev` / `start` | Next.js |
+| `npm run build` | Applies pending DB migrations, then builds (this is what Vercel runs) |
+| `npm run db:migrate` / `db:seed` | Apply migrations / load sample inventory |
 | `npm test` | Payment state machine, webhook signature and DB concurrency tests |
 | `npm run typecheck` / `lint` | Static checks |
 
@@ -79,7 +81,7 @@ Order statuses: `PENDING → PAID | FAILED | ABANDONED | AMOUNT_MISMATCH | REFUN
 
 ## Deploy checklist
 
-1. Use Postgres: change `provider` in `prisma/schema.prisma` to `postgresql`, set `DATABASE_URL`, and run `npx prisma migrate deploy`. For case-insensitive search on Postgres, add `mode: "insensitive"` in `lib/catalog.ts`.
+1. Create a Postgres database (Neon, Supabase or Vercel → Storage) and set `DATABASE_URL` to its **direct** connection string. Migrations run automatically on every build. Seed it once with `npm run db:seed` from a machine whose `.env` points at it.
 2. Set `APP_URL`, `PAYSTACK_SECRET_KEY` (live), `CRON_SECRET` and optionally `PAYSTACK_WEBHOOK_IPS`.
 3. In the Paystack dashboard, set the webhook URL to `https://<domain>/api/payments/webhook`.
 4. Schedule `/api/payments/reconcile` (needs `Authorization: Bearer $CRON_SECRET`):

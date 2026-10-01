@@ -28,8 +28,8 @@ export async function GET() {
     const msg = (err as Error).message;
     checks.database = {
       ok: false,
-      detail: /must start with the protocol `file:`/.test(msg)
-        ? "DATABASE_URL is Postgres but prisma/schema.prisma still uses sqlite"
+      detail: /must start with the protocol `postgres/.test(msg)
+        ? "DATABASE_URL must be a postgresql:// connection string"
         : /does not exist|no such table/i.test(msg)
           ? "Database reachable but tables missing — run prisma db push / migrate deploy"
           : /Environment variable not found: DATABASE_URL/.test(msg)

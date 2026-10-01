@@ -1,28 +1,31 @@
-// Integration test against a throwaway SQLite DB: proves that concurrent
+// Integration test against a throwaway Postgres DB: proves that concurrent
 // confirmations (webhook + status poller + cron) mark an order PAID once and
 // decrement stock exactly once.
+//
+// Runs only when TEST_DATABASE_URL is set — point it at a SEPARATE, empty
+// database (e.g. a Neon branch). It is wiped on every run.
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
-import { rmSync } from "node:fs";
 import type { PaystackTransaction, PaystackTxStatus } from "../src/lib/paystack";
 
-process.env.DATABASE_URL = "file:./test.db";
+const TEST_DB = process.env.TEST_DATABASE_URL;
+if (TEST_DB) process.env.DATABASE_URL = TEST_DB;
+const opts = { skip: TEST_DB ? false : "set TEST_DATABASE_URL to run DB integration tests" };
 
 // Imported lazily so DATABASE_URL above is set before Prisma initialises.
 let db: typeof import("../src/lib/db").db;
 let applyTransaction: typeof import("../src/lib/payments").applyTransaction;
 
 before(async () => {
-  rmSync("prisma/test.db", { force: true });
-  execSync("npx prisma db push --skip-generate --accept-data-loss", { stdio: "ignore", env: { ...process.env } });
+  if (!TEST_DB) return;
+  execSync("npx prisma migrate reset --force --skip-seed --skip-generate", { stdio: "ignore", env: { ...process.env } });
   ({ db } = await import("../src/lib/db"));
   ({ applyTransaction } = await import("../src/lib/payments"));
 });
 
 after(async () => {
-  await db.$disconnect();
-  rmSync("prisma/test.db", { force: true });
+  await db?.$disconnect();
 });
 
 async function makeOrder(stock: number, qty: number) {
@@ -45,7 +48,7 @@ const tx = (reference: string, amount: number, status: PaystackTxStatus = "succe
   id: 1, status, reference, amount, currency: "NGN", paid_at: new Date().toISOString(), channel: "card", gateway_response: "Approved",
 });
 
-test("concurrent confirmations: PAID once, stock decremented once", async () => {
+test("concurrent confirmations: PAID once, stock decremented once", opts, async () => {
   const { c, order } = await makeOrder(5, 2);
   const results = await Promise.allSettled([
     applyTransaction(order, tx(order.reference, order.amountKobo), "webhook"),
@@ -61,7 +64,7 @@ test("concurrent confirmations: PAID once, stock decremented once", async () => 
   assert.equal(container.stock, 3, "stock must be decremented exactly once");
 });
 
-test("underpayment is flagged and never fulfils", async () => {
+test("underpayment is flagged and never fulfils", opts, async () => {
   const { c, order } = await makeOrder(5, 1);
   await applyTransaction(order, tx(order.reference, order.amountKobo - 1), "webhook");
   const fresh = await db.order.findUniqueOrThrow({ where: { id: order.id } });
@@ -70,7 +73,7 @@ test("underpayment is flagged and never fulfils", async () => {
   assert.equal((await db.container.findUniqueOrThrow({ where: { id: c.id } })).stock, 5);
 });
 
-test("failed then succeeded on retry → PAID", async () => {
+test("failed then succeeded on retry → PAID", opts, async () => {
   const { order } = await makeOrder(5, 1);
   const failed = await applyTransaction(order, tx(order.reference, order.amountKobo, "failed"), "poll");
   assert.equal(failed.status, "FAILED");
@@ -78,7 +81,7 @@ test("failed then succeeded on retry → PAID", async () => {
   assert.equal(paid.status, "PAID");
 });
 
-test("paid but out of stock → stays PAID and flagged for review (never lose the payment)", async () => {
+test("paid but out of stock → stays PAID and flagged for review (never lose the payment)", opts, async () => {
   const { order } = await makeOrder(0, 1);
   const res = await applyTransaction(order, tx(order.reference, order.amountKobo), "webhook");
   assert.equal(res.status, "PAID");

@@ -75,7 +75,8 @@ export async function browse(filters: BrowseFilters) {
   if (filters.condition && CONDITION_LABELS[filters.condition]) where.condition = filters.condition;
   const q = filters.q?.trim().slice(0, 80);
   if (q) {
-    where.OR = [{ title: { contains: q } }, { summary: { contains: q } }, { terminal: { contains: q } }, { size: { contains: q.toUpperCase() } }];
+    const like = { contains: q, mode: "insensitive" as const };
+    where.OR = [{ title: like }, { summary: like }, { terminal: like }, { size: like }];
   }
   const orderBy: Prisma.ContainerOrderByWithRelationInput =
     filters.sort === "price_asc" ? { priceKobo: "asc" } : filters.sort === "price_desc" ? { priceKobo: "desc" } : { createdAt: "desc" };

@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
-    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts"
+    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "db:migrate": "prisma migrate deploy",
+    "build:local": "next build"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
