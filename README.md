@@ -48,7 +48,7 @@ tests/                    node:test suites
 5. **Three independent confirmation paths.** All of them call the same idempotent `applyTransaction`:
    - **Status page polling** (`/checkout/status`): backs off exponentially, pauses while offline, and resumes when the connection or tab comes back.
    - **Webhook** (`/api/payments/webhook`): HMAC-SHA512 signature checked over the raw body in constant time, optional IP allowlist, events de-duplicated, and the result **re-verified with the API** rather than trusting the payload. It returns 5xx on failure so Paystack retries.
-   - **Reconciliation cron** (`/api/payments/reconcile`): every 10 minutes it re-verifies any unconfirmed order from the last 72 hours. This catches the case where the customer's phone died **and** the webhook was lost.
+   - **Reconciliation cron** (`/api/payments/reconcile`): every 10 minutes (GitHub Actions, plus a daily Vercel cron) it re-verifies any unconfirmed order from the last 72 hours. This catches the case where the customer's phone died **and** the webhook was lost.
 6. **Strict checks before PAID.** The amount, currency and reference must all match exactly. Anything else becomes `AMOUNT_MISMATCH`, gets flagged `needsReview`, and is never fulfilled automatically.
 7. **No double effects.** Every status change is a conditional `updateMany`, so stock is decremented exactly once even under concurrent confirmations (see `tests/apply-transaction.test.ts`).
 8. **FAILED and ABANDONED are not final.** A late bank transfer or a retry with another card on the same reference still moves the order to PAID.
@@ -82,7 +82,9 @@ Order statuses: `PENDING → PAID | FAILED | ABANDONED | AMOUNT_MISMATCH | REFUN
 1. Use Postgres: change `provider` in `prisma/schema.prisma` to `postgresql`, set `DATABASE_URL`, and run `npx prisma migrate deploy`. For case-insensitive search on Postgres, add `mode: "insensitive"` in `lib/catalog.ts`.
 2. Set `APP_URL`, `PAYSTACK_SECRET_KEY` (live), `CRON_SECRET` and optionally `PAYSTACK_WEBHOOK_IPS`.
 3. In the Paystack dashboard, set the webhook URL to `https://<domain>/api/payments/webhook`.
-4. Schedule `/api/payments/reconcile`. `vercel.json` already does this on Vercel; elsewhere, call it with `Authorization: Bearer $CRON_SECRET`.
+4. Schedule `/api/payments/reconcile` (needs `Authorization: Bearer $CRON_SECRET`):
+   - **Every 10 min:** `.github/workflows/reconcile-payments.yml` (GitHub Actions). Add repo secrets `APP_URL` and `CRON_SECRET`.
+   - **Daily backstop:** `vercel.json`. Vercel Hobby allows only daily crons; on Vercel Pro you can set it to `*/10 * * * *` and drop the workflow.
 5. Replace the in-memory rate limiter with Redis/Upstash if you run more than one instance.
 6. Before going live, run a few `sk_test_` payments, including closing the popup mid-payment and turning off Wi-Fi after paying.
 
