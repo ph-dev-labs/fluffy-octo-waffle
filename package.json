@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
     "db:migrate": "prisma migrate deploy",
-    "build:local": "next build"
+    "build:local": "next build",
+    "admin:reset": "tsx --env-file=.env scripts/reset-admin-password.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
