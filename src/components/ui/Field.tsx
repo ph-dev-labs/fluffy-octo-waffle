@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useId, type ComponentProps, type ReactNode } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useId, useState, type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const control =
@@ -65,6 +66,47 @@ export function Input({ label, error, hint, className, required, ...props }: Bas
           className={cn(control, "h-12", error ? "border-danger-600" : "border-ink-200")}
           {...props}
         />
+      )}
+    </FieldShell>
+  );
+}
+
+/** Password input with a reveal/conceal toggle. Always starts hidden. */
+export function PasswordInput({ label, error, hint, className, required, ...props }: Base & Omit<ComponentProps<"input">, "type">) {
+  const [visible, setVisible] = useState(false);
+  const Icon = visible ? EyeOff : Eye;
+  return (
+    <FieldShell label={label} error={error} hint={hint} required={required} className={className}>
+      {(id, describedBy) => (
+        <div className="relative">
+          <input
+            id={id}
+            type={visible ? "text" : "password"}
+            aria-invalid={!!error || undefined}
+            aria-describedby={describedBy}
+            required={required}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            className={cn(control, "h-12 pr-12", error ? "border-danger-600" : "border-ink-200")}
+            {...props}
+          />
+          <button
+            type="button"
+            onClick={() => setVisible((v) => !v)}
+            aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+            aria-pressed={visible}
+            aria-controls={id}
+            disabled={props.disabled}
+            className="absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 disabled:opacity-40"
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span key={visible ? "hide" : "show"} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.15 }}>
+                <Icon className="size-4.5" aria-hidden />
+              </motion.span>
+            </AnimatePresence>
+          </button>
+        </div>
       )}
     </FieldShell>
   );
