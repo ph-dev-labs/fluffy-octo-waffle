@@ -5,7 +5,7 @@ import { Lock } from "lucide-react";
 import { useActionState } from "react";
 import { loginAction } from "@/app/admin/actions/auth";
 import { initialState } from "@/app/admin/actions/types";
-import { Input } from "@/components/ui/Field";
+import { Input, PasswordInput } from "@/components/ui/Field";
 import { FormMessage, SubmitButton } from "./ui";
 
 export function LoginForm({ next }: { next?: string }) {
@@ -24,7 +24,7 @@ export function LoginForm({ next }: { next?: string }) {
       <form action={action} className="space-y-5">
         <input type="hidden" name="next" value={next ?? ""} />
         <Input name="email" type="email" label="Email" required autoComplete="username" autoFocus />
-        <Input name="password" type="password" label="Password" required autoComplete="current-password" />
+        <PasswordInput name="password" label="Password" required autoComplete="current-password" />
         <FormMessage state={state} />
         <SubmitButton className="h-12 w-full" pendingText="Signing in…">Sign in</SubmitButton>
       </form>
