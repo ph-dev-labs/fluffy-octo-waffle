@@ -6,6 +6,7 @@ import { logger } from "./logger";
 import { verifyTransaction, type PaystackTransaction } from "./paystack";
 import { canTransition, decide, FINAL_STATUSES, type OrderStatus } from "./payment-rules";
 import { maskEmail } from "./utils";
+import { notifyOrderPaid } from "./mail";
 
 export type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -71,7 +72,12 @@ export async function applyTransaction(order: OrderWithItems, tx: PaystackTransa
     logger.info("payment.status_changed", { reference: order.reference, from: current, to: decision.next, source });
   });
 
-  return db.order.findUniqueOrThrow({ where: { id: order.id }, include: { items: true } });
+  const fresh = await db.order.findUniqueOrThrow({ where: { id: order.id }, include: { items: true } });
+  if (fresh.status === "PAID" && !fresh.receiptSentAt) {
+    // Email must never break payment processing; notifyOrderPaid is idempotent.
+    await notifyOrderPaid(fresh.id).catch((err) => logger.error("mail.receipt_failed", { reference: fresh.reference, error: err }));
+  }
+  return fresh;
 }
 
 async function decrementStock(trx: Prisma.TransactionClient, order: OrderWithItems) {

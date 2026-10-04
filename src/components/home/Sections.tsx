@@ -1,13 +1,15 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/ui/SmartImage";
 import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { motion, useScroll, useSpring, useTransform } from "motion/react";
 import { ArrowRight, Quote, Search, ClipboardCheck, Truck, PackageCheck, Play } from "lucide-react";
 import { useRef } from "react";
-import { gallery, stats, steps, testimonials } from "@/content/site";
+import { stats, steps } from "@/content/site";
+import { cloudinaryPoster, cloudinaryVideo } from "@/lib/media";
+import type { GalleryEntry } from "@/lib/catalog";
 import { Counter } from "@/components/ui/Counter";
 import { Reveal, RevealItem } from "@/components/ui/Reveal";
 import { useCarouselState } from "@/components/ui/Carousel";
@@ -81,7 +83,7 @@ export function StatsBand() {
   );
 }
 
-export function Testimonials() {
+export function Testimonials({ testimonials }: { testimonials: { id: string; quote: string; name: string; role: string }[] }) {
   const [ref, api] = useEmblaCarousel({ loop: true, align: "center" }, [Autoplay({ delay: 7000, stopOnMouseEnter: true, stopOnInteraction: false })]);
   const { selected, scrollTo, snaps } = useCarouselState(api);
 
@@ -90,7 +92,7 @@ export function Testimonials() {
       <div className="embla" ref={ref}>
         <div className="embla__container">
           {testimonials.map((t, i) => (
-            <div key={i} className="embla__slide basis-full px-4 md:basis-[70%]">
+            <div key={t.id} className="embla__slide basis-full px-4 md:basis-[70%]">
               <motion.figure
                 animate={{ opacity: selected === i ? 1 : 0.35, scale: selected === i ? 1 : 0.94 }}
                 transition={{ duration: 0.6 }}
@@ -121,8 +123,7 @@ export function Testimonials() {
   );
 }
 
-export function GalleryTeaser() {
-  const shots = gallery.slice(0, 5);
+export function GalleryTeaser({ shots }: { shots: GalleryEntry[] }) {
   return (
     <Reveal stagger={0.08} className="grid auto-rows-[160px] grid-cols-2 gap-3 sm:auto-rows-[200px] md:grid-cols-4">
       {shots.map((g, i) => (
@@ -132,7 +133,7 @@ export function GalleryTeaser() {
               <Image src={g.src} alt={g.caption} fill sizes="(min-width:768px) 50vw, 100vw" className="object-cover transition-transform duration-[1.4s] group-hover:scale-110" />
             ) : (
               <>
-                <video src={g.src} muted playsInline loop autoPlay preload="metadata" className="size-full object-cover" />
+                <video src={cloudinaryVideo(g.src, 960)} poster={cloudinaryPoster(g.src)} muted playsInline loop autoPlay preload="metadata" className="size-full object-cover" />
                 <span className="absolute top-4 right-4 grid size-10 place-items-center rounded-full bg-white/90 text-ink-900">
                   <Play className="size-4 fill-current" />
                 </span>

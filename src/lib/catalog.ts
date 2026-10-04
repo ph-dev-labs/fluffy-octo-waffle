@@ -107,3 +107,21 @@ export async function getTerminals() {
   const rows = await db.container.findMany({ where: { active: true }, select: { terminal: true }, distinct: ["terminal"] });
   return rows.map((r) => r.terminal);
 }
+
+export interface GalleryEntry {
+  type: "image" | "video";
+  src: string;
+  caption: string;
+}
+
+/** Admin-managed gallery; falls back to the bundled starter content if empty. */
+export async function getGallery(limit?: number): Promise<GalleryEntry[]> {
+  const rows = await db.galleryItem.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }], take: limit });
+  if (rows.length) return rows.map((r) => ({ type: r.type === "video" ? "video" : "image", src: r.url, caption: r.caption }));
+  const { gallery } = await import("@/content/site");
+  return limit ? gallery.slice(0, limit) : gallery;
+}
+
+export async function getTestimonials() {
+  return db.testimonial.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: { id: true, quote: true, name: true, role: true } });
+}

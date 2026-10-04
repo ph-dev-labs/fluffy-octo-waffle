@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { getFeatured, getTerminals } from "@/lib/catalog";
+import { getFeatured, getGallery, getTerminals, getTestimonials } from "@/lib/catalog";
 import { Hero, TrustStrip } from "@/components/home/Hero";
 import { CtaBand, GalleryTeaser, StatsBand, StepsTimeline, TerminalMarquee, Testimonials } from "@/components/home/Sections";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -9,7 +9,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { QuoteSection } from "@/components/forms/QuoteSection";
 
 export default async function HomePage() {
-  const [featured, terminals] = await Promise.all([getFeatured(8), getTerminals()]);
+  const [featured, terminals, shots, testimonials] = await Promise.all([getFeatured(8), getTerminals(), getGallery(5), getTestimonials()]);
 
   return (
     <>
@@ -62,16 +62,18 @@ export default async function HomePage() {
           }
         />
         <div className="mt-12">
-          <GalleryTeaser />
+          <GalleryTeaser shots={shots} />
         </div>
       </section>
 
-      <section className="overflow-hidden bg-ink-100/60 py-24">
-        <div className="container-x">
-          <SectionHeading eyebrow="Testimonials" title="Trusted by builders, traders and logistics teams" align="center" className="mb-12" />
-        </div>
-        <Testimonials />
-      </section>
+      {testimonials.length ? (
+        <section className="overflow-hidden bg-ink-100/60 py-24">
+          <div className="container-x">
+            <SectionHeading eyebrow="Testimonials" title="Trusted by builders, traders and logistics teams" align="center" className="mb-12" />
+          </div>
+          <Testimonials testimonials={testimonials} />
+        </section>
+      ) : null}
 
       <div className="pt-24">
         <CtaBand />

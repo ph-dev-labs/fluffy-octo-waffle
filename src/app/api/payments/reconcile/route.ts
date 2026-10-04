@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { syncOrder } from "@/lib/payments";
+import { notifyOrderPaid } from "@/lib/mail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +64,14 @@ async function handle(req: NextRequest) {
     data: { status: "ABANDONED" },
   });
   summary.abandoned = stale.count;
+
+  // Receipts whose email failed earlier (claim was released) get another try.
+  const unsent = await db.order.findMany({
+    where: { status: "PAID", receiptSentAt: null, paidAt: { gt: new Date(now - 72 * HOUR) } },
+    select: { id: true },
+    take: 20,
+  });
+  for (const { id } of unsent) await notifyOrderPaid(id).catch((err) => logger.warn("reconcile.receipt_failed", { id, error: err }));
 
   logger.info("reconcile.done", summary);
   return NextResponse.json(summary);

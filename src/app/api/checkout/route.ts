@@ -57,7 +57,12 @@ export async function POST(req: NextRequest) {
 
   const containerCount = [...quantities.values()].reduce((a, b) => a + b, 0);
   const subtotalKobo = containers.reduce((sum, c) => sum + c.priceKobo * quantities.get(c.id)!, 0);
-  const deliveryKobo = input.fulfilment === "DELIVERY" ? deliveryFeeKobo(input.deliveryZone, containerCount) : 0;
+  let deliveryKobo = 0;
+  if (input.fulfilment === "DELIVERY") {
+    const zone = await db.deliveryZone.findFirst({ where: { code: input.deliveryZone, active: true } });
+    if (!zone) return apiError(422, "VALIDATION_FAILED", "Please choose a delivery region.", { fields: { deliveryZone: "That delivery region is no longer available" } });
+    deliveryKobo = deliveryFeeKobo(zone, containerCount);
+  }
   const amountKobo = subtotalKobo + deliveryKobo;
 
   if (!Number.isSafeInteger(amountKobo) || amountKobo <= 0 || amountKobo > MAX_ORDER_KOBO) {

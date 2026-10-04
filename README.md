@@ -16,8 +16,8 @@ npm run dev
 | --- | --- |
 | `npm run dev` / `start` | Next.js |
 | `npm run build` | Applies pending DB migrations, then builds (this is what Vercel runs) |
-| `npm run db:migrate` / `db:seed` | Apply migrations / load sample inventory |
-| `npm test` | Payment state machine, webhook signature and DB concurrency tests |
+| `npm run db:migrate` / `db:seed` | Apply migrations / load starter content + create the first owner admin |
+| `npm test` | Payment state machine, webhook signature, password hashing, Cloudinary signing, DB concurrency tests |
 | `npm run typecheck` / `lint` | Static checks |
 
 ## Project layout
@@ -38,6 +38,54 @@ src/
 prisma/                   schema + seed
 tests/                    node:test suites
 ```
+
+## Admin panel (`/admin`)
+
+| Area | What admins can do |
+| --- | --- |
+| Dashboard | 30-day revenue, orders to fulfil, pending payments, new requests, low stock, 14-day revenue chart |
+| Orders | Filter, search, export CSV; per order: fulfilment status + internal notes, **re-verify with Paystack**, resend receipt, resolve "needs review" |
+| Containers | Create, edit, hide, feature, archive; photos uploaded to Cloudinary (drag to reorder, first = cover) |
+| Requests | Quotes, inspection bookings and contact messages; mark handled / delete |
+| Delivery rates | Per-region rate per container, used live by checkout |
+| Gallery / Testimonials | Manage photos, videos and quotes shown on the site |
+| Admin users *(owner)* | Add admins (one-time temporary password), reset passwords, deactivate, change role |
+| Audit log *(owner)* | Every sign-in, failed sign-in and change, with who, when and IP |
+
+**Admins can never mark an order as paid by hand.** Payment status only comes from Paystack, so a mistake or a compromised admin account can't create fake "paid" orders.
+
+**First owner account.** Set `ADMIN_SEED_EMAIL`, then run `npm run db:seed` **in your own terminal**. The temporary password is printed once, and the owner has to change it at first sign-in. Re-running the seed never overwrites an existing account or any content an admin has edited.
+
+**How admin access is secured**
+- **Passwords** are hashed with scrypt.
+- **Sessions** live in the database: a random 256-bit token sits in an `HttpOnly`, `SameSite=Strict`, `__Host-` cookie with a 12-hour lifetime.
+- **Brute-force protection:** each account locks for 15 minutes after 5 failed attempts, and login attempts are also rate-limited per IP.
+- **Password changes** sign out every other device.
+- **Every page and server action** re-checks the session and role. Middleware is only a convenience redirect.
+- **Forms** use Next.js server actions, which reject cross-site requests by checking the request origin.
+- **CSV exports** are protected against spreadsheet-formula injection.
+
+## Images & video (Cloudinary)
+
+- **Uploads:** admins upload straight from the browser to Cloudinary using a short-lived **signature** that our server issues only to signed-in admins. The signature pins the folder and the allowed file types. The API secret never reaches the browser, and Vercel's 4.5 MB request limit doesn't apply.
+- **Delivery:** images are served through Cloudinary with `f_auto,q_auto` and width-based resizing (`src/lib/media.ts` and `components/ui/SmartImage.tsx`), so browsers get AVIF or WebP at the right size. Videos get `q_auto,vc_auto`, plus a poster frame.
+- **Accepted URLs:** the server only saves media URLs from **our** Cloudinary cloud and folder (or the legacy R2 bucket).
+- **Deleting:** removing or replacing media also deletes it from Cloudinary.
+
+## Email (Resend)
+
+These emails are sent through [Resend](https://resend.com) (`src/lib/mail.ts`):
+- the customer's payment receipt
+- a "new paid order" alert to staff
+- alerts for new quotes, inspection bookings and contact messages
+
+**One receipt per order:** the send is "claimed" in the database before it goes out. If sending fails, the claim is released and the reconciliation cron retries.
+
+**Without `RESEND_API_KEY`** emails are skipped with a log line, and nothing else breaks.
+
+**Setup:**
+1. Verify the `c-zuchigrp.com` domain in Resend. That means adding the SPF, DKIM and DMARC records it gives you to your DNS.
+2. Set `MAIL_FROM`, e.g. `C-ZUCHI <orders@c-zuchigrp.com>`, and `MAIL_ADMIN_TO`.
 
 ## Payments: how money is kept safe
 
@@ -82,7 +130,7 @@ Order statuses: `PENDING → PAID | FAILED | ABANDONED | AMOUNT_MISMATCH | REFUN
 ## Deploy checklist
 
 1. Create a Postgres database (Neon, Supabase or Vercel → Storage) and set `DATABASE_URL` to its **direct** connection string. Migrations run automatically on every build. Seed it once with `npm run db:seed` from a machine whose `.env` points at it.
-2. Set `APP_URL`, `PAYSTACK_SECRET_KEY` (live), `CRON_SECRET` and optionally `PAYSTACK_WEBHOOK_IPS`.
+2. Set `APP_URL`, `PAYSTACK_SECRET_KEY` (live), `CRON_SECRET`, `CLOUDINARY_*`, `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_ADMIN_TO` and optionally `PAYSTACK_WEBHOOK_IPS` (see `.env.example`).
 3. In the Paystack dashboard, set the webhook URL to `https://<domain>/api/payments/webhook`.
 4. Schedule `/api/payments/reconcile` (needs `Authorization: Bearer $CRON_SECRET`):
    - **Every 10 min:** `.github/workflows/reconcile-payments.yml` (GitHub Actions). Add repo secrets `APP_URL` and `CRON_SECRET`.
@@ -99,9 +147,10 @@ Order statuses: `PENDING → PAID | FAILED | ABANDONED | AMOUNT_MISMATCH | REFUN
 
 ## Not included yet (recommended next steps)
 
-- Admin dashboard: inventory CRUD, orders, and a review queue for `needsReview` orders
+- Automatic distance-based delivery pricing (Google Maps). A proposal for the client has been prepared separately.
 - Customer accounts (log in / sign up) and order history
-- Transactional email (order receipt, quote and inspection notifications) via Resend or Postmark
+- Two-factor authentication for admins (TOTP)
 - Error monitoring (Sentry) and uptime alerts on the reconcile cron
+- Cleanup job for Cloudinary uploads that were never saved (an admin uploads, then abandons the form)
 # fluffy-octo-waffle
 # fluffy-octo-waffle

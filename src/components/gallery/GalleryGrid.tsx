@@ -1,12 +1,13 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/ui/SmartImage";
 import useEmblaCarousel from "embla-carousel-react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Play, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useCarouselState } from "@/components/ui/Carousel";
 import { cn } from "@/lib/utils";
+import { cloudinaryPoster, cloudinaryVideo } from "@/lib/media";
 
 export interface GalleryItem {
   type: "image" | "video";
@@ -52,7 +53,7 @@ export function GalleryGrid({ items }: { items: GalleryItem[] }) {
                   <Image src={item.src} alt={item.caption} width={800} height={i % 3 === 0 ? 1000 : 600} sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" className="h-auto w-full object-cover transition-transform duration-[1.2s] group-hover:scale-105" />
                 ) : (
                   <div className="relative aspect-[4/5]">
-                    <video src={item.src} muted playsInline loop autoPlay preload="metadata" className="absolute inset-0 size-full object-cover" />
+                    <video src={cloudinaryVideo(item.src, 900)} poster={cloudinaryPoster(item.src)} muted playsInline loop autoPlay preload="metadata" className="absolute inset-0 size-full object-cover" />
                     <span className="absolute top-4 right-4 grid size-11 place-items-center rounded-full bg-white/90 text-ink-900 transition-transform group-hover:scale-110">
                       <Play className="size-4 fill-current" />
                     </span>
@@ -112,7 +113,7 @@ function LightboxInner({ items, start, onClose }: { items: GalleryItem[]; start:
               {item.type === "image" ? (
                 <Image src={item.src} alt={item.caption} fill sizes="100vw" className="object-contain p-4 sm:p-10" />
               ) : (
-                <video src={item.src} controls playsInline autoPlay={i === selected} className="max-h-full max-w-full rounded-2xl" />
+                <video src={cloudinaryVideo(item.src)} poster={cloudinaryPoster(item.src)} controls playsInline autoPlay={i === selected} className="max-h-full max-w-full rounded-2xl" />
               )}
             </div>
           ))}

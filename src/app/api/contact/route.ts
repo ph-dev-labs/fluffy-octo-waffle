@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { apiError, guardPost, ok, parseJson } from "@/lib/http";
 import { logger } from "@/lib/logger";
+import { notifyOps } from "@/lib/mail";
 import { contactSchema } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
@@ -19,6 +20,6 @@ export async function POST(req: NextRequest) {
     logger.error("contact.save_failed", { error: err });
     return apiError(500, "SAVE_FAILED", "We couldn't send your message. Please try again.", { retryable: true });
   }
-  // TODO(client): forward to support inbox (e.g. Resend / Postmark email) — keep it async/non-blocking.
+  await notifyOps(`New contact message — ${data.subject}`, { Name: data.fullName, Email: data.email, Subject: data.subject, Message: data.message }, data.email).catch(() => {});
   return ok({ received: true }, 201);
 }

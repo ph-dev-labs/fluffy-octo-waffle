@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/ui/SmartImage";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, Building2, Lock, MapPin, RotateCw, ShieldCheck, Truck, WifiOff } from "lucide-react";
@@ -13,7 +13,7 @@ import { openPaystack } from "@/lib/client/paystack";
 import { idempotencyKeyFor, resetIdempotencyKey, savePending } from "@/lib/client/pending-payment";
 import { useCartPricing } from "@/lib/client/use-cart-pricing";
 import { formatNaira } from "@/lib/money";
-import { DELIVERY_ZONES, deliveryFeeKobo, type DeliveryZone } from "@/lib/pricing";
+import { deliveryFeeKobo, type ZoneOption } from "@/lib/pricing";
 import { checkoutSchema, fieldErrors } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 
@@ -26,11 +26,12 @@ interface CheckoutResponse {
 
 type Stage = "form" | "creating" | "paying";
 
-export function CheckoutForm() {
+export function CheckoutForm({ zones }: { zones: ZoneOption[] }) {
   const router = useRouter();
   const { data, loading, error: pricingError, retry, items } = useCartPricing();
   const [fulfilment, setFulfilment] = useState<"PICKUP" | "DELIVERY">("PICKUP");
-  const [zone, setZone] = useState<DeliveryZone | "">("");
+  const [zone, setZone] = useState("");
+  const selectedZone = zones.find((z) => z.code === zone);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stage, setStage] = useState<Stage>("form");
   const [banner, setBanner] = useState<{ tone: "error" | "offline"; text: string } | null>(null);
@@ -38,7 +39,7 @@ export function CheckoutForm() {
 
   const available = useMemo(() => data?.lines.filter((l) => l.available && (l.quantity ?? 0) > 0) ?? [], [data]);
   const containerCount = available.reduce((n, l) => n + (l.quantity ?? 0), 0);
-  const deliveryKobo = fulfilment === "DELIVERY" && zone ? deliveryFeeKobo(zone, containerCount) : 0;
+  const deliveryKobo = fulfilment === "DELIVERY" ? deliveryFeeKobo(selectedZone, containerCount) : 0;
   const totalKobo = (data?.subtotalKobo ?? 0) + deliveryKobo;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -215,10 +216,10 @@ export function CheckoutForm() {
             {fulfilment === "DELIVERY" ? (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 <div className="grid gap-5 pt-5">
-                  <Select label="Delivery region" required value={zone} onChange={(e) => setZone(e.target.value as DeliveryZone)} error={errors.deliveryZone} disabled={busy}>
+                  <Select label="Delivery region" required value={zone} onChange={(e) => setZone(e.target.value)} error={errors.deliveryZone} disabled={busy}>
                     <option value="" disabled>Select region…</option>
-                    {Object.entries(DELIVERY_ZONES).map(([k, z]) => (
-                      <option key={k} value={k}>
+                    {zones.map((z) => (
+                      <option key={z.code} value={z.code}>
                         {z.label} — {formatNaira(z.perContainerKobo)} / container
                       </option>
                     ))}

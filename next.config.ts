@@ -14,7 +14,10 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: [{ protocol: "https", hostname: "pub-ab61e9141ab444a2a62d1178bcf81b10.r2.dev" }],
+    remotePatterns: [
+      { protocol: "https", hostname: "pub-ab61e9141ab444a2a62d1178bcf81b10.r2.dev" },
+      { protocol: "https", hostname: "res.cloudinary.com" },
+    ],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

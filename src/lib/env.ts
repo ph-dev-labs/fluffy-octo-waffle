@@ -1,6 +1,11 @@
 import "server-only";
 import { z } from "zod";
 
+const optionalString = z
+  .string()
+  .optional()
+  .transform((v) => (v ? v : undefined));
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().min(1),
@@ -11,6 +16,13 @@ const schema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   PAYSTACK_WEBHOOK_IPS: z.string().optional(),
+  CLOUDINARY_CLOUD_NAME: optionalString,
+  CLOUDINARY_API_KEY: optionalString,
+  CLOUDINARY_API_SECRET: optionalString,
+  CLOUDINARY_FOLDER: z.string().regex(/^[a-z0-9_-]+$/i).default("czuchi"),
+  RESEND_API_KEY: optionalString,
+  MAIL_FROM: optionalString,
+  MAIL_ADMIN_TO: optionalString,
   CRON_SECRET: z
     .string()
     .min(32, "CRON_SECRET must be at least 32 characters")

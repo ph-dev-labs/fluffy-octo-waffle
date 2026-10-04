@@ -1,4 +1,7 @@
+import { randomBytes, scrypt } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
+import { gallery, testimonials } from "../src/content/site";
+import { DEFAULT_DELIVERY_ZONES } from "../src/lib/pricing";
 
 const db = new PrismaClient();
 const R2 = "https://pub-ab61e9141ab444a2a62d1178bcf81b10.r2.dev/containers";
@@ -60,12 +63,67 @@ const containers = [
   },
 ];
 
+// Same format as src/lib/auth/password.ts (that file is server-only, so it isn't imported here).
+function hashPassword(password: string): Promise<string> {
+  const N = 2 ** 15, r = 8, p = 1;
+  const salt = randomBytes(16);
+  return new Promise((resolve, reject) =>
+    scrypt(password.normalize("NFKC"), salt, 64, { N, r, p, maxmem: 128 * N * r * 2 }, (err, key) =>
+      err ? reject(err) : resolve(`scrypt$${N}$${r}$${p}$${salt.toString("base64")}$${key.toString("base64")}`),
+    ),
+  );
+}
+
+function generatePassword(length = 20) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#%^*-_";
+  return Array.from(randomBytes(length), (b) => alphabet[b % alphabet.length]).join("");
+}
+
+async function seedAdmin() {
+  const email = (process.env.ADMIN_SEED_EMAIL || "admin@c-zuchigrp.com").trim().toLowerCase();
+  const name = process.env.ADMIN_SEED_NAME || "C-ZUCHI Admin";
+  const existing = await db.adminUser.findUnique({ where: { email } });
+  if (existing) {
+    console.log(`Admin ${email} already exists — password left unchanged.`);
+    return;
+  }
+  const provided = process.env.ADMIN_SEED_PASSWORD;
+  if (provided && (provided.length < 12 || !/[A-Za-z]/.test(provided) || !/[0-9]/.test(provided))) {
+    throw new Error("ADMIN_SEED_PASSWORD must be at least 12 characters and include a letter and a number.");
+  }
+  const password = provided || generatePassword();
+  await db.adminUser.create({ data: { email, name, role: "OWNER", passwordHash: await hashPassword(password), mustChangePassword: true } });
+  console.log("\n=== Owner admin created (must change password at first sign-in) ===");
+  console.log(`  URL:      /admin/login`);
+  console.log(`  Email:    ${email}`);
+  console.log(`  Password: ${provided ? "(the ADMIN_SEED_PASSWORD you set)" : password}`);
+  console.log("");
+}
+
 async function main() {
+  // Create-only (update: {}): re-running the seed never overwrites admin edits.
   for (const c of containers) {
     const data = { ...c, images: JSON.stringify(c.images) };
-    await db.container.upsert({ where: { slug: c.slug }, update: data, create: data });
+    await db.container.upsert({ where: { slug: c.slug }, update: {}, create: data });
   }
-  console.log(`Seeded ${containers.length} containers`);
+
+  const zones = Object.entries(DEFAULT_DELIVERY_ZONES);
+  for (const [i, [code, z]] of zones.entries()) {
+    await db.deliveryZone.upsert({ where: { code }, update: {}, create: { code, label: z.label, perContainerKobo: z.perContainerKobo, sortOrder: i } });
+  }
+
+  if ((await db.galleryItem.count()) === 0) {
+    await db.galleryItem.createMany({ data: gallery.map((g, i) => ({ type: g.type, url: g.src, caption: g.caption, sortOrder: i })) });
+  }
+
+  // Only the CEO quote is real; placeholder testimonials are NOT seeded.
+  if ((await db.testimonial.count()) === 0) {
+    const real = testimonials.filter((t) => !t.quote.startsWith("Placeholder"));
+    if (real.length) await db.testimonial.createMany({ data: real.map((t, i) => ({ ...t, sortOrder: i })) });
+  }
+
+  await seedAdmin();
+  console.log(`Seed complete: ${containers.length} containers, ${zones.length} delivery zones, gallery + testimonials.`);
 }
 
 main()

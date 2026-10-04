@@ -1,7 +1,6 @@
 // Shared Zod schemas: used by the API routes (authoritative) and by forms on
 // the client (for instant feedback). Client validation is UX only.
 import { z } from "zod";
-import { DELIVERY_ZONE_KEYS } from "./pricing";
 
 const trimmed = (min: number, max: number, label: string) =>
   z
@@ -42,7 +41,7 @@ export const checkoutSchema = z
       companyName: z.string().trim().max(160).optional().or(z.literal("")),
     }),
     fulfilment: z.enum(["PICKUP", "DELIVERY"]),
-    deliveryZone: z.enum(DELIVERY_ZONE_KEYS).optional(),
+    deliveryZone: z.string().regex(/^[A-Z0-9_]{2,32}$/, "Choose a delivery region").optional(),
     deliveryAddress: z.string().trim().max(500).optional().or(z.literal("")),
     website: honeypot,
   })

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { apiError, guardPost, ok, parseJson } from "@/lib/http";
 import { logger } from "@/lib/logger";
+import { notifyOps } from "@/lib/mail";
 import { inspectionSchema } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
@@ -19,6 +20,6 @@ export async function POST(req: NextRequest) {
     logger.error("inspection.save_failed", { error: err });
     return apiError(500, "SAVE_FAILED", "We couldn't send your request. Please try again.", { retryable: true });
   }
-  // TODO(client): notify the terminal team (e.g. Resend / Postmark email) — keep it async/non-blocking.
+  await notifyOps(`New inspection booking — ${data.fullName}`, { Name: data.fullName, Email: data.email, Phone: data.phone, Terminal: data.terminal, Date: data.preferredDate.toDateString(), Container: data.containerSlug, Notes: data.notes }, data.email).catch(() => {});
   return ok({ received: true }, 201);
 }
