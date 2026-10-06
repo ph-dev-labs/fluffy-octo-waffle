@@ -17,9 +17,14 @@ interface Mail {
   attachments?: { filename: string; content: string }[];
 }
 
+/** Last provider error, so admin actions can show why an email failed. */
+export let lastMailError: string | null = null;
+
 export async function sendMail(mail: Mail): Promise<boolean> {
+  lastMailError = null;
   const { RESEND_API_KEY: key, MAIL_FROM: from } = env();
   if (!key || !from) {
+    lastMailError = "Email isn't configured on this server (RESEND_API_KEY / MAIL_FROM missing).";
     logger.warn("mail.not_configured", { subject: mail.subject });
     return false;
   }
@@ -31,11 +36,18 @@ export async function sendMail(mail: Mail): Promise<boolean> {
       signal: AbortSignal.timeout(mail.attachments?.length ? 30_000 : 10_000),
     });
     if (!res.ok) {
-      logger.error("mail.send_failed", { subject: mail.subject, status: res.status, body: (await res.text()).slice(0, 300) });
+      const body = (await res.text()).slice(0, 300);
+      try {
+        lastMailError = `Resend: ${JSON.parse(body).message ?? body}`;
+      } catch {
+        lastMailError = `Resend HTTP ${res.status}`;
+      }
+      logger.error("mail.send_failed", { subject: mail.subject, status: res.status, body });
       return false;
     }
     return true;
   } catch (err) {
+    lastMailError = `Couldn't reach Resend: ${(err as Error).message}`;
     logger.error("mail.send_error", { subject: mail.subject, error: err });
     return false;
   }

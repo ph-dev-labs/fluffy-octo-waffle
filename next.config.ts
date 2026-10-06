@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // react-pdf ships its own layout engine; run it as a plain Node module rather than bundling it.
   serverExternalPackages: ["@react-pdf/renderer"],
+  // pdfkit (used by react-pdf) loads its built-in fonts and colour profile by a
+  // path computed at runtime, so Vercel's file tracing can't see them. Ship them
+  // explicitly with every function that renders invoices (PDF route + the order
+  // page, whose server action renders the PDF for email).
+  outputFileTracingIncludes: {
+    "/api/admin/invoices/**": ["./node_modules/pdfkit/js/standard-fonts/**/*", "./node_modules/pdfkit/js/data/**/*"],
+    "/admin/orders/**": ["./node_modules/pdfkit/js/standard-fonts/**/*", "./node_modules/pdfkit/js/data/**/*"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

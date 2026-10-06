@@ -7,7 +7,7 @@ import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth/session";
 import { checkContainerNumber } from "@/lib/container-number";
 import { logger } from "@/lib/logger";
-import { sendInvoiceEmail } from "@/lib/mail";
+import { lastMailError, sendInvoiceEmail } from "@/lib/mail";
 import { expandUnits, formatInvoiceNumber, invoiceEligibility, loadInvoice, parseContainerNumbers, renderInvoicePdf } from "@/lib/invoice/service";
 import type { ActionState } from "./types";
 
@@ -99,8 +99,8 @@ async function sendInvoice(invoiceId: string, adminId: string): Promise<ActionSt
   try {
     pdf = await renderInvoicePdf(finalInv);
   } catch (err) {
-    logger.error("invoice.render_failed", { number: inv.number, error: err });
-    return { message: "Couldn't generate the PDF. Please try again." };
+    logger.error("invoice.render_failed", { number: inv.number, error: err, stack: (err as Error)?.stack?.slice(0, 1500) });
+    return { message: `Couldn't generate the PDF: ${(err as Error)?.message ?? "unknown error"}` };
   }
 
   const ok = await sendInvoiceEmail({
@@ -111,7 +111,7 @@ async function sendInvoice(invoiceId: string, adminId: string): Promise<ActionSt
     totalKobo: inv.order.amountKobo,
     pdf,
   });
-  if (!ok) return { message: "The invoice is saved, but the email couldn't be sent. Check the email settings (RESEND_API_KEY / MAIL_FROM), or download the PDF and send it manually." };
+  if (!ok) return { message: `The invoice is saved, but the email couldn't be sent — ${lastMailError ?? "unknown error"}. You can download the PDF and send it manually.` };
 
   await db.invoice.update({ where: { id: invoiceId }, data: { status: "SENT", sentAt: new Date(), sentTo: inv.order.customerEmail, sendCount: { increment: 1 } } });
   await audit(adminId, inv.sendCount ? "invoice.resend" : "invoice.send", inv.number, inv.order.customerEmail);

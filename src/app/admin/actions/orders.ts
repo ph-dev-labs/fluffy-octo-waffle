@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth/session";
-import { notifyOrderPaid } from "@/lib/mail";
+import { lastMailError, notifyOrderPaid } from "@/lib/mail";
 import { syncOrder } from "@/lib/payments";
 import { PaymentsNotConfiguredError } from "@/lib/paystack";
 import { FULFILMENT_STATUSES } from "@/components/admin/badges";
@@ -71,5 +71,5 @@ export async function resendReceiptAction(id: string, _: ActionState): Promise<A
   const after = await db.order.findUniqueOrThrow({ where: { id }, select: { receiptSentAt: true } });
   await audit(admin.id, "order.resend_receipt", order.reference);
   revalidatePath(`/admin/orders/${id}`);
-  return after.receiptSentAt ? { ok: true, message: `Receipt sent to ${order.customerEmail}.` } : { message: "Email couldn't be sent — check the email settings (RESEND_API_KEY / MAIL_FROM)." };
+  return after.receiptSentAt ? { ok: true, message: `Receipt sent to ${order.customerEmail}.` } : { message: `Email couldn't be sent — ${lastMailError ?? "check the email settings (RESEND_API_KEY / MAIL_FROM)"}.` };
 }
