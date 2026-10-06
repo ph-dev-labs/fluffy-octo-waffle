@@ -1,13 +1,26 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Plus_Jakarta_Sans, Sora } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { MotionProvider } from "@/components/layout/MotionProvider";
 import { site } from "@/content/site";
 import "./globals.css";
 
-const body = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
-const display = Sora({ subsets: ["latin"], variable: "--font-display-face", display: "swap", weight: ["600", "700", "800"] });
+// Self-hosted (latin, variable weight) so builds never depend on reaching Google Fonts.
+const body = localFont({
+  src: "../fonts/plus-jakarta-sans-latin.woff2",
+  weight: "200 800",
+  variable: "--font-body",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "Segoe UI", "Arial", "sans-serif"],
+});
+const display = localFont({
+  src: "../fonts/sora-latin.woff2",
+  weight: "100 800",
+  variable: "--font-display-face",
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "Segoe UI", "Arial", "sans-serif"],
+});
 
 export const metadata: Metadata = {
   metadataBase: safeBaseUrl(),
