@@ -73,7 +73,8 @@ model Order {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  items OrderItem[]
+  items   OrderItem[]
+  invoice Invoice?
 
   @@index([status, createdAt])
   @@index([needsReview])
@@ -216,4 +217,22 @@ model Testimonial {
   active    Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
+}
+
+// One invoice per order, issued after delivery/collection.
+model Invoice {
+  id               String    @id @default(cuid())
+  seq              Int       @unique @default(autoincrement())
+  number           String    @unique // e.g. INV-2026-00001
+  orderId          String    @unique
+  containerNumbers String // JSON array: one ISO 6346 number per container unit, in item order
+  note             String?
+  status           String    @default("DRAFT") // DRAFT | SENT
+  issuedAt         DateTime  @default(now())
+  sentAt           DateTime?
+  sentTo           String?
+  sendCount        Int       @default(0)
+  createdById      String?
+  updatedAt        DateTime  @updatedAt
+  order            Order     @relation(fields: [orderId], references: [id])
 }

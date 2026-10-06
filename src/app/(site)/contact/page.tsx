@@ -5,7 +5,11 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { ContactForm } from "@/components/forms/ContactForm";
 import { Reveal, RevealItem } from "@/components/ui/Reveal";
 
-export const metadata: Metadata = { title: "Contact us", description: "Speak directly with the C-ZUCHI team." };
+export const metadata: Metadata = {
+  title: "Contact us",
+  description: "Call, WhatsApp or email C-ZUCHI about shipping containers, delivery across Nigeria or bulk orders. Fast replies from our Lagos team.",
+  alternates: { canonical: "/contact" },
+};
 
 export default function ContactPage() {
   const channels = [

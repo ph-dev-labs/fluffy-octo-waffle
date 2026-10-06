@@ -6,8 +6,13 @@ import { Reveal, RevealItem } from "@/components/ui/Reveal";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ButtonLink } from "@/components/ui/Button";
 import { QuoteSection } from "@/components/forms/QuoteSection";
+import { JsonLd, faqLd } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "How it works", description: "Browse, inspect or buy, choose delivery, and receive your container." };
+export const metadata: Metadata = {
+  title: "How buying a container works",
+  description: "Browse verified containers, inspect or buy online with Paystack, choose pickup or nationwide delivery, and receive your container. FAQs answered.",
+  alternates: { canonical: "/how-it-works" },
+};
 
 const PROMISES = [
   { icon: BadgeCheck, t: "Inspected inventory", d: "Every container is checked for structure, doors, seals and floor before listing." },
@@ -27,6 +32,7 @@ const FAQ = [
 export default function HowItWorksPage() {
   return (
     <>
+      <JsonLd data={faqLd(FAQ)} />
       <PageHeader title="How it works" body="Buying a container should be simple. Here’s how we get one from our yard to your site." crumbs={[{ href: "/how-it-works", label: "How it works" }]} />
       <section className="container-x py-24">
         <StepsTimeline />

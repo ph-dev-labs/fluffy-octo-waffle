@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/PageHeader";
 
-export const metadata: Metadata = { title: "Terms & conditions" };
+export const metadata: Metadata = { title: "Terms & conditions", alternates: { canonical: "/terms" } };
 
 // TODO(client): replace with the legally reviewed terms and conditions.
 export default function Page() {

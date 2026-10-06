@@ -13,6 +13,8 @@ interface Mail {
   html: string;
   text: string;
   replyTo?: string;
+  /** Base64-encoded file attachments (e.g. invoice PDFs). */
+  attachments?: { filename: string; content: string }[];
 }
 
 export async function sendMail(mail: Mail): Promise<boolean> {
@@ -25,8 +27,8 @@ export async function sendMail(mail: Mail): Promise<boolean> {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: mail.to, subject: mail.subject, html: mail.html, text: mail.text, reply_to: mail.replyTo }),
-      signal: AbortSignal.timeout(10_000),
+      body: JSON.stringify({ from, to: mail.to, subject: mail.subject, html: mail.html, text: mail.text, reply_to: mail.replyTo, attachments: mail.attachments }),
+      signal: AbortSignal.timeout(mail.attachments?.length ? 30_000 : 10_000),
     });
     if (!res.ok) {
       logger.error("mail.send_failed", { subject: mail.subject, status: res.status, body: (await res.text()).slice(0, 300) });
@@ -104,5 +106,26 @@ export async function notifyOps(subject: string, fields: Record<string, string |
     replyTo,
     html: layout(subject, `<table style="font-size:14px">${rows}</table><p><a href="${env().APP_URL}/admin/requests">Open in admin →</a></p>`),
     text: Object.entries(fields).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n"),
+  });
+}
+
+/** Emails an invoice PDF to the customer (staff on CC via MAIL_ADMIN_TO). Returns true on success. */
+export async function sendInvoiceEmail(opts: { to: string; customerName: string; invoiceNumber: string; orderReference: string; totalKobo: number; pdf: Buffer }) {
+  const first = opts.customerName.split(" ")[0];
+  return sendMail({
+    to: opts.to,
+    subject: `Invoice ${opts.invoiceNumber} — C-ZUCHI order ${opts.orderReference}`,
+    replyTo: ops()[0],
+    html: layout(
+      `Your invoice ${opts.invoiceNumber}`,
+      `<p style="font-size:14px;line-height:1.6">Hello ${esc(first)},</p>
+<p style="font-size:14px;line-height:1.6">Thank you for choosing C-ZUCHI. Your container order has been completed and your invoice is attached as a PDF for your records.</p>
+<table style="font-size:14px;margin:16px 0"><tr><td style="color:#5a6688;padding-right:16px">Invoice</td><td><b>${esc(opts.invoiceNumber)}</b></td></tr>
+<tr><td style="color:#5a6688;padding-right:16px">Order reference</td><td>${esc(opts.orderReference)}</td></tr>
+<tr><td style="color:#5a6688;padding-right:16px">Amount paid</td><td>${formatNaira(opts.totalKobo)}</td></tr></table>
+<p style="font-size:13px;color:#5a6688">Questions about this invoice? Simply reply to this email.</p>`,
+    ),
+    text: `Hello ${first}, your invoice ${opts.invoiceNumber} for order ${opts.orderReference} (${formatNaira(opts.totalKobo)}) is attached. Reply to this email with any questions.`,
+    attachments: [{ filename: `${opts.invoiceNumber}.pdf`, content: opts.pdf.toString("base64") }],
   });
 }

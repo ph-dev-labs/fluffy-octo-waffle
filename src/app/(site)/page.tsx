@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import { getFeatured, getGallery, getTerminals, getTestimonials } from "@/lib/catalog";
 import { Hero, TrustStrip } from "@/components/home/Hero";
@@ -7,6 +8,8 @@ import { Carousel } from "@/components/ui/Carousel";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ButtonLink } from "@/components/ui/Button";
 import { QuoteSection } from "@/components/forms/QuoteSection";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
   const [featured, terminals, shots, testimonials] = await Promise.all([getFeatured(8), getTerminals(), getGallery(5), getTestimonials()]);

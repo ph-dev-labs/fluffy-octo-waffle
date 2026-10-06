@@ -4,7 +4,11 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { GalleryGrid } from "@/components/gallery/GalleryGrid";
 import { QuoteSection } from "@/components/forms/QuoteSection";
 
-export const metadata: Metadata = { title: "Gallery", description: "Photos and short videos from our terminals, containers and deliveries." };
+export const metadata: Metadata = {
+  title: "Gallery — containers and deliveries",
+  description: "Real photos and videos of C-ZUCHI shipping containers at our Lagos and Port Harcourt terminals, and deliveries to customer sites.",
+  alternates: { canonical: "/gallery" },
+};
 
 export default async function GalleryPage() {
   const gallery = await getGallery();

@@ -11,11 +11,27 @@ const display = Sora({ subsets: ["latin"], variable: "--font-display-face", disp
 
 export const metadata: Metadata = {
   metadataBase: safeBaseUrl(),
-  title: { default: `${site.name} | Shipping Container Marketplace`, template: `%s | ${site.name}` },
+  title: { default: `${site.name} | ${site.seoTitle}`, template: `%s | ${site.name}` },
   description: site.description,
-  openGraph: { type: "website", siteName: site.name, title: `${site.name} | Shipping Container Marketplace`, description: site.description },
-  twitter: { card: "summary_large_image" },
-  robots: { index: true, follow: true },
+  applicationName: site.name,
+  keywords: site.keywords,
+  authors: [{ name: site.legalName }],
+  creator: site.legalName,
+  publisher: site.legalName,
+  category: "business",
+  formatDetection: { telephone: false, email: false, address: false },
+  openGraph: {
+    type: "website",
+    locale: "en_NG",
+    siteName: site.legalName,
+    title: `${site.name} | ${site.seoTitle}`,
+    description: site.description,
+    url: "/",
+  },
+  twitter: { card: "summary_large_image", title: `${site.name} | ${site.seoTitle}`, description: site.description },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
+  // Add the codes from Google Search Console / Bing Webmaster Tools when available.
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION || undefined },
 };
 
 /** Never let a malformed APP_URL (e.g. missing https://) take down every page. */
@@ -29,7 +45,7 @@ function safeBaseUrl() {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#0a1128",
+  themeColor: "#192440",
   width: "device-width",
   initialScale: 1,
 };

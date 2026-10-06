@@ -2,11 +2,13 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { PendingPaymentBanner } from "@/components/layout/PendingPaymentBanner";
+import { JsonLd, organizationLd, websiteLd } from "@/lib/seo";
 
 /** Public storefront chrome. The admin area (/admin) has its own layout. */
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <JsonLd data={[organizationLd(), websiteLd()]} />
       <SkipLink />
       <Navbar />
       <main id="main">{children}</main>
