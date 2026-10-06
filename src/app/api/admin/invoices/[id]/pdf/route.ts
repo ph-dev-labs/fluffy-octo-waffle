@@ -4,6 +4,8 @@ import { loadInvoice, renderInvoicePdf } from "@/lib/invoice/service";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
+// PDF engine start-up can be slow on a cold serverless instance.
+export const maxDuration = 30;
 
 /** Admin-only PDF preview/download. Drafts carry a DRAFT watermark. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +27,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
   } catch (err) {
-    logger.error("invoice.render_failed", { number: inv.number, error: err });
-    return new NextResponse("Could not render invoice", { status: 500 });
+    logger.error("invoice.render_failed", { number: inv.number, error: err, stack: (err as Error)?.stack?.slice(0, 1500) });
+    // Admin-only route, so the real reason is shown to help diagnose deployment issues.
+    return new NextResponse(`Could not render invoice ${inv.number}: ${(err as Error)?.message ?? String(err)}`, { status: 500, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }
 }
