@@ -54,44 +54,88 @@ export function ZoneForm({ zone }: { zone?: ZoneValues }) {
 
 // ── Gallery ────────────────────────────────────────────────────────────────
 
-export function GalleryItemForm({ item }: { item?: { id: string; url: string; caption: string; sortOrder: number; active: boolean } }) {
+export interface GalleryItemValues {
+  id: string;
+  url: string;
+  caption: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+/** Calls `cb` once each time the action reports success. */
+function useOnSuccess(state: ActionState, cb?: () => void) {
+  const seen = useRef<ActionState | null>(null);
+  useEffect(() => {
+    if (state.ok && state !== seen.current) {
+      seen.current = state;
+      cb?.();
+    }
+  }, [state, cb]);
+}
+
+export function GalleryItemForm({ item, onSaved, onCancel }: { item?: GalleryItemValues; onSaved?: () => void; onCancel?: () => void }) {
   const [state, action] = useActionState(saveGalleryItemAction.bind(null, item?.id ?? null), initialState);
+  useOnSuccess(state, onSaved);
   const f = state.fields ?? {};
   // Remount the uploader after a successful create so it clears.
   return (
     <form key={!item && state.ok ? JSON.stringify(state) : "form"} action={action} className="space-y-4">
       <MediaUploader name="url" folder="gallery" single allowVideo initial={item ? [item.url] : []} />
       {f.url ? <p className="text-xs font-medium text-danger-600">{f.url}</p> : null}
-      <Input name="caption" label="Caption" required defaultValue={item?.caption} maxLength={160} error={f.caption} />
+      <Input name="caption" label="Caption" required defaultValue={item?.caption} maxLength={160} error={f.caption} autoFocus={!!item} />
       <div className="grid grid-cols-2 gap-3">
         <Input name="sortOrder" type="number" min={0} label="Order" defaultValue={item?.sortOrder ?? 0} />
         <div className="pt-6"><Check name="active" label="Visible" defaultChecked={item?.active ?? true} /></div>
       </div>
       <FormMessage state={state} />
-      <SubmitButton pendingText="Saving…">{item ? "Save" : "Add to gallery"}</SubmitButton>
+      <div className="flex gap-2">
+        <SubmitButton pendingText="Saving…">{item ? "Save changes" : "Add to gallery"}</SubmitButton>
+        {onCancel ? <CancelButton onClick={onCancel} /> : null}
+      </div>
     </form>
+  );
+}
+
+function CancelButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex h-10 items-center rounded-xl px-4 text-sm font-semibold text-ink-600 ring-1 ring-ink-200 hover:bg-ink-50">
+      Cancel
+    </button>
   );
 }
 
 // ── Testimonials ───────────────────────────────────────────────────────────
 
-export function TestimonialForm({ t }: { t?: { id: string; quote: string; name: string; role: string; sortOrder: number; active: boolean } }) {
+export interface TestimonialValues {
+  id: string;
+  quote: string;
+  name: string;
+  role: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export function TestimonialForm({ t, onSaved, onCancel }: { t?: TestimonialValues; onSaved?: () => void; onCancel?: () => void }) {
   const [state, action] = useActionState(saveTestimonialAction.bind(null, t?.id ?? null), initialState);
   const ref = useResetOnSuccess(state, !t);
+  useOnSuccess(state, onSaved);
   const f = state.fields ?? {};
   return (
     <form ref={ref} action={action} className="space-y-3">
-      <Textarea name="quote" label="Quote" required rows={3} defaultValue={t?.quote} maxLength={600} error={f.quote} />
+      <Textarea name="quote" label="Quote" required rows={3} defaultValue={t?.quote} maxLength={600} error={f.quote} autoFocus={!!t} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Input name="name" label="Name" required defaultValue={t?.name} error={f.name} />
         <Input name="role" label="Role · company" required defaultValue={t?.role} error={f.role} />
       </div>
-      <div className="grid grid-cols-[100px_1fr_auto] items-start gap-3">
+      <div className="grid grid-cols-[100px_1fr] items-start gap-3">
         <Input name="sortOrder" type="number" min={0} label="Order" defaultValue={t?.sortOrder ?? 0} />
         <div className="pt-6"><Check name="active" label="Show on site" defaultChecked={t?.active ?? true} /></div>
-        <div className="pt-7"><SubmitButton variant={t ? "secondary" : "primary"} pendingText="…">{t ? "Save" : "Add"}</SubmitButton></div>
       </div>
       <FormMessage state={state} />
+      <div className="flex gap-2">
+        <SubmitButton pendingText="Saving…">{t ? "Save changes" : "Add testimonial"}</SubmitButton>
+        {onCancel ? <CancelButton onClick={onCancel} /> : null}
+      </div>
     </form>
   );
 }
