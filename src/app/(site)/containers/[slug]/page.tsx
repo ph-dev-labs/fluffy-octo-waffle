@@ -12,13 +12,24 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Reveal } from "@/components/ui/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
 import { QuoteSection } from "@/components/forms/QuoteSection";
+import { breadcrumbLd, JsonLd, siteUrl } from "@/lib/seo";
+import { site } from "@/content/site";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const c = await getBySlug((await params).slug);
-  if (!c) return { title: "Container not found" };
-  return { title: c.title, description: c.summary, openGraph: { images: c.images.slice(0, 1) } };
+  if (!c) return { title: "Container not found", robots: { index: false } };
+  const size = SIZE_LABELS[c.size] ?? c.size;
+  const description = `${c.title} for sale at ${c.terminal} — ${formatNaira(c.priceKobo)}. ${c.summary} Free inspection and delivery across Nigeria.`.slice(0, 300);
+  return {
+    // Add the size only when the listing title doesn't already say it (avoids "20ft Standard (20ft Standard)").
+    title: `${c.title.toLowerCase().includes(c.size.slice(0, 2)) ? c.title : `${c.title} (${size})`} — ${formatNaira(c.priceKobo)}`,
+    description,
+    alternates: { canonical: `/containers/${c.slug}` },
+    openGraph: { type: "website", title: `${c.title} — ${formatNaira(c.priceKobo)}`, description, url: `/containers/${c.slug}`, images: c.images.slice(0, 1).map((url) => ({ url, alt: c.title })) },
+    twitter: { card: "summary_large_image", title: c.title, description, images: c.images.slice(0, 1) },
+  };
 }
 
 export default async function ContainerPage({ params }: Props) {
@@ -34,18 +45,36 @@ export default async function ContainerPage({ params }: Props) {
     { icon: MapPin, label: "Terminal", value: c.terminal },
   ];
 
-  const jsonLd = {
+  const CONDITION_SCHEMA: Record<string, string> = {
+    NEW: "https://schema.org/NewCondition",
+    USED: "https://schema.org/UsedCondition",
+    REFURBISHED: "https://schema.org/RefurbishedCondition",
+  };
+  const productLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: c.title,
-    description: c.summary,
+    description: c.description,
+    sku: c.slug,
+    category: "Shipping containers",
     image: c.images,
-    offers: { "@type": "Offer", priceCurrency: "NGN", price: (c.priceKobo / 100).toFixed(2), availability: c.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock" },
+    brand: { "@type": "Brand", name: site.name },
+    additionalProperty: specs.map((s) => ({ "@type": "PropertyValue", name: s.label, value: s.value })),
+    offers: {
+      "@type": "Offer",
+      url: siteUrl(`/containers/${c.slug}`),
+      priceCurrency: "NGN",
+      price: (c.priceKobo / 100).toFixed(2),
+      itemCondition: CONDITION_SCHEMA[c.condition] ?? "https://schema.org/UsedCondition",
+      availability: c.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      seller: { "@id": siteUrl("/#organization") },
+      areaServed: "NG",
+    },
   };
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <JsonLd data={[productLd, breadcrumbLd([{ name: "Home", path: "/" }, { name: "Containers", path: "/browse" }, { name: c.title, path: `/containers/${c.slug}` }])]} />
       <section className="container-x pt-32 pb-16">
         <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-2 text-sm text-ink-400">
           <Link href="/" className="hover:text-ink-900">Home</Link>/<Link href="/browse" className="hover:text-ink-900">Containers</Link>/<span className="text-ink-700">{c.title}</span>

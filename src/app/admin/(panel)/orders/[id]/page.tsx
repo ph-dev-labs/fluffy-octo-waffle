@@ -7,16 +7,32 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Card } from "@/components/admin/ui";
 import { FulfilmentBadge, PaymentBadge } from "@/components/admin/badges";
 import { OrderActions, ResolveReviewForm } from "@/components/admin/forms/OrderForms";
+import { InvoicePanel } from "@/components/admin/forms/InvoicePanel";
+import { expandUnits, invoiceEligibility, parseContainerNumbers } from "@/lib/invoice/service";
 
 export const metadata = { title: "Order" };
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
-  const o = await db.order.findUnique({ where: { id }, include: { items: true } });
+  const o = await db.order.findUnique({ where: { id }, include: { items: true, invoice: true } });
   if (!o) notFound();
   const events = await db.paymentEvent.findMany({ where: { reference: o.reference }, orderBy: { createdAt: "desc" }, take: 20, select: { id: true, type: true, createdAt: true } });
   const auditTrail = await db.auditLog.findMany({ where: { target: o.reference }, orderBy: { createdAt: "desc" }, take: 20, include: { user: { select: { name: true } } } });
+
+  const units = expandUnits(o.items).map((u) => ({ label: u.unitsOfItem > 1 ? `${u.title} — unit ${u.unitIndex} of ${u.unitsOfItem}` : u.title }));
+  const invoice = o.invoice
+    ? {
+        id: o.invoice.id,
+        number: o.invoice.number,
+        status: o.invoice.status,
+        sentAt: o.invoice.sentAt?.toISOString() ?? null,
+        sentTo: o.invoice.sentTo,
+        sendCount: o.invoice.sendCount,
+        containerNumbers: parseContainerNumbers(o.invoice.containerNumbers),
+        note: o.invoice.note,
+      }
+    : null;
 
   const rows: [string, React.ReactNode][] = [
     ["Created", o.createdAt.toLocaleString("en-NG")],
@@ -71,6 +87,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <div className="flex justify-between"><dt className="text-ink-500">Delivery{o.deliveryZone ? ` (${o.deliveryZone})` : ""}</dt><dd className="tabular-nums">{formatNaira(o.deliveryKobo)}</dd></div>
               <div className="flex justify-between pt-1 font-semibold"><dt>Total</dt><dd className="tabular-nums">{formatNaira(o.amountKobo)}</dd></div>
             </dl>
+          </Card>
+
+          <Card title="Invoice">
+            <InvoicePanel orderId={o.id} customerEmail={o.customerEmail} eligibility={invoiceEligibility(o)} units={units} invoice={invoice} />
           </Card>
 
           <Card title="Payment">

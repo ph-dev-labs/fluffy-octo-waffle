@@ -87,6 +87,32 @@ These emails are sent through [Resend](https://resend.com) (`src/lib/mail.ts`):
 1. Verify the `c-zuchigrp.com` domain in Resend. That means adding the SPF, DKIM and DMARC records it gives you to your DNS.
 2. Set `MAIL_FROM`, e.g. `C-ZUCHI <orders@c-zuchigrp.com>`, and `MAIL_ADMIN_TO`.
 
+## Invoices
+
+After an order is **paid** and marked **Delivered** or **Collected**, an admin opens the order and fills in the **Invoice** panel:
+
+1. Enter the container number for each unit (e.g. `CSQU 305438 3`). Numbers are checked against the **ISO 6346 check digit**, so a mistyped digit is caught before it goes on an invoice. An admin can override the check after confirming against the container door. Duplicate numbers on the same order or on another invoice are rejected.
+2. **Save draft**, then **Preview PDF**. Drafts carry a DRAFT watermark.
+3. **Generate & send** emails the PDF to the customer via Resend, with replies going to sales. Invoices can be edited and resent; every action is audit-logged.
+
+**The PDF** (`src/lib/invoice/InvoiceDocument.tsx`) is an A4 page containing:
+- the logo and company header
+- billed-to and delivered-to blocks
+- one line per container with its number
+- totals and a PAID stamp with the payment date, channel and Paystack reference
+
+**Invoice numbers** are sequential: `INV-<year>-<00001>`. Fill in `site.rcNumber` in `src/content/site.ts` to show the CAC registration number.
+
+## Branding & SEO
+
+- **Logo assets** (transparent PNGs) live in `public/brand/`: the full lockup, the mark, and white variants for dark backgrounds. Favicons and the social preview image are `src/app/icon.png`, `apple-icon.png`, `favicon.ico` and `opengraph-image.png`. Ask the client for an **SVG** logo for the sharpest results.
+- **Structured data** (`src/lib/seo.tsx`): Organization and WebSite (with sitelinks search) on every page; Product with Offer and BreadcrumbList on container pages; FAQPage on How it works.
+- **Indexing:**
+  - Every public page has its own title, description and canonical URL.
+  - Filtered or search result pages are `noindex, follow`.
+  - The sitemap has priorities, there's a web manifest, and Open Graph and Twitter cards are set.
+- **After launch:** add the site to Google Search Console (set `GOOGLE_SITE_VERIFICATION`), submit `/sitemap.xml`, and create a Google Business Profile for the Apapa office.
+
 ## Payments: how money is kept safe
 
 **Golden rule:** The browser never decides prices or whether a payment succeeded. Only Paystack's API does, and only when our server asks it.

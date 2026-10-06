@@ -1,21 +1,19 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Lock } from "lucide-react";
 import { useActionState } from "react";
 import { loginAction } from "@/app/admin/actions/auth";
 import { initialState } from "@/app/admin/actions/types";
 import { Input, PasswordInput } from "@/components/ui/Field";
 import { FormMessage, SubmitButton } from "./ui";
+import { LogoMark } from "@/components/layout/Logo";
 
 export function LoginForm({ next }: { next?: string }) {
   const [state, action] = useActionState(loginAction, initialState);
   return (
     <motion.div initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.6 }} className="relative w-full max-w-md rounded-[2rem] bg-white p-8 shadow-lift sm:p-10">
       <div className="mb-8 flex items-center gap-3">
-        <span className="grid size-11 place-items-center rounded-xl bg-ink-900 text-white">
-          <Lock className="size-5" />
-        </span>
+        <LogoMark className="h-11 w-auto" />
         <div>
           <h1 className="font-display text-xl font-bold">C-ZUCHI Admin</h1>
           <p className="text-sm text-ink-500">Sign in to manage the store</p>

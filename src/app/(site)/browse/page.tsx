@@ -6,14 +6,23 @@ import { BrowseFilters } from "@/components/product/BrowseFilters";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { QuoteSection } from "@/components/forms/QuoteSection";
 
-export const metadata: Metadata = {
-  title: "Browse containers",
-  description: "Browse verified 20ft and 40ft shipping containers across our terminals.",
-};
-
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-export default async function BrowsePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+type SP = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+export async function generateMetadata({ searchParams }: SP): Promise<Metadata> {
+  const sp = await searchParams;
+  const filtered = Boolean(one(sp.q) || one(sp.size) || one(sp.condition) || one(sp.sort));
+  return {
+    title: "Shipping containers for sale — 20ft & 40ft",
+    description: "Browse verified new and used 20ft and 40ft shipping containers for sale in Lagos and Port Harcourt. Upfront prices, free inspection, nationwide delivery.",
+    alternates: { canonical: "/browse" },
+    // Search/filter variations shouldn't compete with the main listing page in Google.
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
+  };
+}
+
+export default async function BrowsePage({ searchParams }: SP) {
   const sp = await searchParams;
   const sortRaw = one(sp.sort);
   const filters: Filters = {

@@ -5,7 +5,11 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { InspectionForm } from "@/components/forms/InspectionForm";
 import { Reveal } from "@/components/ui/Reveal";
 
-export const metadata: Metadata = { title: "Book an inspection", description: "See a container in person at our terminals before you buy." };
+export const metadata: Metadata = {
+  title: "Book a container inspection",
+  description: "Book a free, no-obligation inspection of any shipping container at our Apapa, Tin Can or Onne terminals before you buy.",
+  alternates: { canonical: "/inspection" },
+};
 
 export default async function InspectionPage({ searchParams }: { searchParams: Promise<{ container?: string }> }) {
   const [{ container }, terminals] = await Promise.all([searchParams, getTerminals()]);

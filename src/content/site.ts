@@ -5,8 +5,23 @@ const R2 = "https://pub-ab61e9141ab444a2a62d1178bcf81b10.r2.dev";
 
 export const site = {
   name: "C-ZUCHI",
+  legalName: "C-ZUCHI Global Service Ltd",
+  // TODO(client): CAC registration number, shown on invoices when set.
+  rcNumber: "",
   tagline: "Your Trusted Shipping Container Plug.",
-  description: "Browse verified shipping containers across our terminals, book an inspection, or order with nationwide delivery.",
+  description: "Buy verified 20ft and 40ft shipping containers in Nigeria — new and used, inspected before sale, with nationwide delivery from our Lagos and Port Harcourt terminals.",
+  seoTitle: "Shipping Containers for Sale in Nigeria — 20ft & 40ft, New & Used",
+  keywords: [
+    "shipping containers for sale in Nigeria",
+    "buy container Lagos",
+    "20ft container price Nigeria",
+    "40ft high cube container",
+    "used shipping containers Lagos",
+    "container delivery Nigeria",
+    "Apapa container terminal",
+    "Port Harcourt shipping container",
+    "C-ZUCHI",
+  ],
   phone: "+234 000 000 0000",
   whatsapp: "https://wa.me/2340000000000",
   email: "sales@c-zuchigrp.com",

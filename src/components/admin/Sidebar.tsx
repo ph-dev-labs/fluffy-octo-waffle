@@ -7,6 +7,7 @@ import { Boxes, ClipboardList, ExternalLink, Images, Inbox, LayoutDashboard, Log
 import { useEffect, useState } from "react";
 import { logoutAction } from "@/app/admin/actions/auth";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/layout/Logo";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -39,7 +40,7 @@ export function Sidebar({ user, badges }: Props) {
   const content = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 py-6">
-        <span className="grid size-9 place-items-center rounded-lg bg-brand-600 text-sm font-black text-white">CZ</span>
+        <LogoMark light className="h-8 w-auto" />
         <div>
           <p className="font-display text-sm font-bold text-white">C-ZUCHI</p>
           <p className="text-xs text-ink-400">Admin console</p>
