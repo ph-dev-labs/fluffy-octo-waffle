@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth/session";
@@ -43,47 +42,6 @@ export async function deleteRequestAction(kind: RequestKind, id: string) {
   await deleteRequest(kind, id);
   await audit(admin.id, "request.delete", id, kind);
   revalidatePath("/admin", "layout");
-}
-
-// ── Delivery zones ───────────────────────────────────────────────────────
-
-const zoneSchema = z.object({
-  code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_]{2,32}$/, "2–32 chars: A–Z, 0–9, _"),
-  label: z.string().trim().min(2, "Label is required").max(120),
-  rateNaira: z.coerce.number("Enter a rate").min(0).max(100_000_000),
-  sortOrder: z.coerce.number().int().min(0).max(999).default(0),
-  active: checkbox,
-});
-
-export async function saveZoneAction(id: string | null, _: ActionState, fd: FormData): Promise<ActionState> {
-  const admin = await requireAdmin();
-  const parsed = zoneSchema.safeParse(Object.fromEntries(fd));
-  if (!parsed.success) return { message: "Please fix the highlighted fields.", fields: fieldErrors(parsed.error) };
-  const { rateNaira, ...rest } = parsed.data;
-  const data = { ...rest, perContainerKobo: Math.round(rateNaira * 100) };
-  try {
-    if (id) {
-      const before = await db.deliveryZone.findUniqueOrThrow({ where: { id } });
-      await db.deliveryZone.update({ where: { id }, data });
-      await audit(admin.id, "delivery.update", data.code, `${before.perContainerKobo} → ${data.perContainerKobo} kobo, active=${data.active}`);
-    } else {
-      await db.deliveryZone.create({ data });
-      await audit(admin.id, "delivery.create", data.code, `${data.perContainerKobo} kobo`);
-    }
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return { fields: { code: "That code already exists" } };
-    throw err;
-  }
-  revalidatePath("/admin/delivery");
-  revalidatePath("/checkout");
-  return { ok: true, message: id ? "Rate updated." : "Region added." };
-}
-
-export async function deleteZoneAction(id: string) {
-  const admin = await requireAdmin();
-  const z = await db.deliveryZone.delete({ where: { id } });
-  await audit(admin.id, "delivery.delete", z.code);
-  revalidatePath("/admin/delivery");
 }
 
 // ── Gallery ──────────────────────────────────────────────────────────────

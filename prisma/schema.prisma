@@ -53,6 +53,14 @@ model Order {
   fulfilment            String // PICKUP | DELIVERY
   deliveryZone          String?
   deliveryAddress       String?
+  // Snapshot of how the delivery fee was worked out (see lib/delivery).
+  deliveryState         String?
+  deliveryArea          String?
+  deliveryLat           Float?
+  deliveryLng           Float?
+  deliveryDistanceKm    Float?
+  deliveryMethod        String? // AREA | STATE | DISTANCE | ESTIMATE
+  deliveryYard          String?
   // Each Paystack initialize attempt uses a fresh reference (see /api/checkout).
   initAttempts          Int       @default(0)
   paystackAccessCode    String?
@@ -189,14 +197,38 @@ model AuditLog {
 
 // ── Editable site content ────────────────────────────────────────────────
 
+// State → Area tree. A null price means "inherit": an area falls back to its
+// state's price, and a state without a price is priced by distance.
 model DeliveryZone {
-  id               String   @id @default(cuid())
-  code             String   @unique // stable key sent by checkout, e.g. "LAGOS"
+  id               String         @id @default(cuid())
+  code             String         @unique // stable key, e.g. "LAGOS", "LAGOS_LEKKI"
   label            String
-  perContainerKobo Int
-  active           Boolean  @default(true)
-  sortOrder        Int      @default(0)
-  updatedAt        DateTime @updatedAt
+  kind             String         @default("STATE") // STATE | AREA | REGION (legacy, pre-0004)
+  parentId         String?
+  parent           DeliveryZone?  @relation("ZoneTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children         DeliveryZone[] @relation("ZoneTree")
+  perContainerKobo Int? // per 20ft container; null = inherit / use distance
+  active           Boolean        @default(true)
+  sortOrder        Int            @default(0)
+  updatedAt        DateTime       @updatedAt
+
+  @@index([parentId])
+  @@index([kind, active])
+}
+
+// Single row (id = 1): rules for distance-based pricing.
+model DeliverySettings {
+  id              Int      @id @default(1)
+  distanceEnabled Boolean  @default(true)
+  yards           String // JSON [{ name, lat, lng }]
+  baseFeeKobo     Int
+  ratePerKmKobo   Int
+  minFeeKobo      Int
+  maxFeeKobo      Int
+  maxDistanceKm   Int
+  roadFactorPct   Int      @default(135) // straight line → road estimate when no routing API
+  sizeMultipliers String // JSON { "20FT": 100, "40FT": 150, ... } percent
+  updatedAt       DateTime @updatedAt
 }
 
 model GalleryItem {

@@ -20,10 +20,10 @@ export async function GET(req: NextRequest) {
   const sp = Object.fromEntries(req.nextUrl.searchParams);
   const orders = await db.order.findMany({ where: buildOrderWhere(sp), orderBy: { createdAt: "desc" }, take: 10_000, include: { items: true } });
 
-  const header = ["reference", "created", "paid_at", "status", "fulfilment_status", "customer", "email", "phone", "company", "fulfilment", "delivery_zone", "delivery_address", "items", "subtotal_ngn", "delivery_ngn", "total_ngn", "channel", "needs_review"];
+  const header = ["reference", "created", "paid_at", "status", "fulfilment_status", "customer", "email", "phone", "company", "fulfilment", "delivery_zone", "delivery_state", "delivery_area", "delivery_lat", "delivery_lng", "delivery_method", "delivery_km", "delivery_address", "items", "subtotal_ngn", "delivery_ngn", "total_ngn", "channel", "needs_review"];
   const rows = orders.map((o) =>
     [
-      o.reference, o.createdAt, o.paidAt, o.status, o.fulfilmentStatus, o.customerName, o.customerEmail, o.customerPhone, o.companyName, o.fulfilment, o.deliveryZone, o.deliveryAddress,
+      o.reference, o.createdAt, o.paidAt, o.status, o.fulfilmentStatus, o.customerName, o.customerEmail, o.customerPhone, o.companyName, o.fulfilment, o.deliveryZone, o.deliveryState, o.deliveryArea, o.deliveryLat, o.deliveryLng, o.deliveryMethod, o.deliveryDistanceKm, o.deliveryAddress,
       o.items.map((i) => `${i.quantity}x ${i.title}`).join("; "), o.subtotalKobo / 100, o.deliveryKobo / 100, o.amountKobo / 100, o.channel, o.needsReview,
     ].map(cell).join(","),
   );

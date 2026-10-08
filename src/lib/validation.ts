@@ -41,13 +41,14 @@ export const checkoutSchema = z
       companyName: z.string().trim().max(160).optional().or(z.literal("")),
     }),
     fulfilment: z.enum(["PICKUP", "DELIVERY"]),
-    deliveryZone: z.string().regex(/^[A-Z0-9_]{2,32}$/, "Choose a delivery region").optional(),
+    // Signed delivery quote from /api/delivery/quote (see lib/delivery/quote-token).
+    deliveryQuote: z.string().max(4000).optional(),
     deliveryAddress: z.string().trim().max(500).optional().or(z.literal("")),
     website: honeypot,
   })
   .superRefine((v, ctx) => {
     if (v.fulfilment !== "DELIVERY") return;
-    if (!v.deliveryZone) ctx.addIssue({ code: "custom", path: ["deliveryZone"], message: "Choose a delivery region" });
+    if (!v.deliveryQuote) ctx.addIssue({ code: "custom", path: ["deliveryQuote"], message: "Drop a pin on your delivery location" });
     if (!v.deliveryAddress || v.deliveryAddress.length < 10)
       ctx.addIssue({ code: "custom", path: ["deliveryAddress"], message: "Enter a full delivery address" });
   });

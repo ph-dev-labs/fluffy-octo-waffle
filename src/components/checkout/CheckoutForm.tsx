@@ -7,13 +7,13 @@ import { AlertTriangle, Building2, Lock, MapPin, RotateCw, ShieldCheck, Truck, W
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { Honeypot, Input, Select, Textarea } from "@/components/ui/Field";
+import { Honeypot, Input } from "@/components/ui/Field";
+import { DeliveryPicker, type DeliveryQuoteResult, type StateOption } from "./DeliveryPicker";
 import { ApiError, fetchJson, NetworkError } from "@/lib/client/fetch-json";
 import { openPaystack } from "@/lib/client/paystack";
 import { idempotencyKeyFor, resetIdempotencyKey, savePending } from "@/lib/client/pending-payment";
 import { useCartPricing } from "@/lib/client/use-cart-pricing";
 import { formatNaira } from "@/lib/money";
-import { deliveryFeeKobo, type ZoneOption } from "@/lib/pricing";
 import { checkoutSchema, fieldErrors } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 
@@ -26,12 +26,12 @@ interface CheckoutResponse {
 
 type Stage = "form" | "creating" | "paying";
 
-export function CheckoutForm({ zones }: { zones: ZoneOption[] }) {
+export function CheckoutForm({ states }: { states: StateOption[] }) {
   const router = useRouter();
   const { data, loading, error: pricingError, retry, items } = useCartPricing();
   const [fulfilment, setFulfilment] = useState<"PICKUP" | "DELIVERY">("PICKUP");
-  const [zone, setZone] = useState("");
-  const selectedZone = zones.find((z) => z.code === zone);
+  const [quote, setQuote] = useState<DeliveryQuoteResult | null>(null);
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stage, setStage] = useState<Stage>("form");
   const [banner, setBanner] = useState<{ tone: "error" | "offline"; text: string } | null>(null);
@@ -39,13 +39,19 @@ export function CheckoutForm({ zones }: { zones: ZoneOption[] }) {
 
   const available = useMemo(() => data?.lines.filter((l) => l.available && (l.quantity ?? 0) > 0) ?? [], [data]);
   const containerCount = available.reduce((n, l) => n + (l.quantity ?? 0), 0);
-  const deliveryKobo = fulfilment === "DELIVERY" ? deliveryFeeKobo(selectedZone, containerCount) : 0;
+  const quoteItems = useMemo(() => available.map((l) => ({ containerId: l.containerId, quantity: l.quantity! })), [available]);
+  const deliveryKobo = fulfilment === "DELIVERY" ? (quote?.totalKobo ?? 0) : 0;
   const totalKobo = (data?.subtotalKobo ?? 0) + deliveryKobo;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting.current) return; // hard guard against double submit
     setBanner(null);
+    if (fulfilment === "DELIVERY" && !quote) {
+      setErrors({ deliveryQuote: "Drop a pin on your delivery location" });
+      setBanner({ tone: "error", text: "We need a delivery price before you can pay — drop your pin on the map (or choose pickup)." });
+      return;
+    }
 
     const fd = new FormData(e.currentTarget);
     const base = {
@@ -57,7 +63,7 @@ export function CheckoutForm({ zones }: { zones: ZoneOption[] }) {
         companyName: String(fd.get("companyName") ?? ""),
       },
       fulfilment,
-      deliveryZone: fulfilment === "DELIVERY" && zone ? zone : undefined,
+      deliveryQuote: fulfilment === "DELIVERY" && quote ? quote.token : undefined,
       deliveryAddress: fulfilment === "DELIVERY" ? String(fd.get("deliveryAddress") ?? "") : "",
       website: String(fd.get("website") ?? ""),
     };
@@ -123,6 +129,7 @@ export function CheckoutForm({ zones }: { zones: ZoneOption[] }) {
         return;
       }
       if (err.code === "ITEMS_UNAVAILABLE" || err.code === "INSUFFICIENT_STOCK") retry();
+      if (err.code === "QUOTE_EXPIRED") setQuoteRefresh((n) => n + 1);
       if (err.fields) setErrors(err.fields);
       setBanner({ tone: "error", text: err.message });
       toast.error(err.message);
@@ -215,17 +222,7 @@ export function CheckoutForm({ zones }: { zones: ZoneOption[] }) {
           <AnimatePresence initial={false}>
             {fulfilment === "DELIVERY" ? (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <div className="grid gap-5 pt-5">
-                  <Select label="Delivery region" required value={zone} onChange={(e) => setZone(e.target.value)} error={errors.deliveryZone} disabled={busy}>
-                    <option value="" disabled>Select region…</option>
-                    {zones.map((z) => (
-                      <option key={z.code} value={z.code}>
-                        {z.label} — {formatNaira(z.perContainerKobo)} / container
-                      </option>
-                    ))}
-                  </Select>
-                  <Textarea name="deliveryAddress" label="Full delivery address" required rows={3} maxLength={500} error={errors.deliveryAddress} disabled={busy} placeholder="Street, area, city, state + any landmark" />
-                </div>
+                <DeliveryPicker states={states} items={quoteItems} disabled={busy} errors={errors} refreshKey={quoteRefresh} onQuote={setQuote} />
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -251,7 +248,7 @@ export function CheckoutForm({ zones }: { zones: ZoneOption[] }) {
         </ul>
         <dl className="space-y-2 border-t border-ink-100 pt-4 text-sm">
           <Row label="Subtotal" value={formatNaira(data!.subtotalKobo)} />
-          <Row label={fulfilment === "DELIVERY" ? `Delivery (${containerCount} × container)` : "Pickup"} value={fulfilment === "DELIVERY" ? (zone ? formatNaira(deliveryKobo) : "Select region") : "Free"} />
+          <Row label={fulfilment === "DELIVERY" ? `Delivery${containerCount > 1 ? ` (${containerCount} containers)` : ""}` : "Pickup"} value={fulfilment === "DELIVERY" ? (quote ? formatNaira(deliveryKobo) : "Drop your pin") : "Free"} />
         </dl>
         <div className="flex items-baseline justify-between border-t border-ink-100 pt-4">
           <span className="font-semibold">Total</span>
