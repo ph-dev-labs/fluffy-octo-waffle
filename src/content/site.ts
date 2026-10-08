@@ -38,6 +38,7 @@ export const site = {
 export const nav = [
   { href: "/", label: "Home" },
   { href: "/browse", label: "Containers" },
+  { href: "/haulage", label: "Truck hire" },
   { href: "/gallery", label: "Gallery" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/contact", label: "Contact" },

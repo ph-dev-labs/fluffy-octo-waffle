@@ -268,3 +268,98 @@ model Invoice {
   updatedAt        DateTime  @updatedAt
   order            Order     @relation(fields: [orderId], references: [id])
 }
+
+// ── Truck hire (haulage) ────────────────────────────────────────────────────
+// A customer's own container is moved from a pickup pin to a drop-off pin.
+// Priced by road distance (HaulageSettings). Paid in full or deposit + balance,
+// each instalment being its own Paystack transaction (HaulagePayment).
+
+model HaulageRequest {
+  id               String    @id @default(cuid())
+  reference        String    @unique // human-friendly, e.g. HL-7K3D9Q
+  idempotencyKey   String    @unique
+  requestHash      String
+  status           String    @default("AWAITING_PAYMENT") // AWAITING_PAYMENT | CONFIRMED | SCHEDULED | IN_TRANSIT | DELIVERED | CANCELLED
+  customerName     String
+  customerEmail    String
+  customerPhone    String
+  companyName      String?
+  pickupAddress    String
+  pickupLat        Float
+  pickupLng        Float
+  pickupState      String?
+  dropoffAddress   String
+  dropoffLat       Float
+  dropoffLng       Float
+  dropoffState     String?
+  containerSize    String
+  containerCount   Int
+  containerNumbers String?
+  preferredDate    DateTime?
+  notes            String?
+  distanceKm       Float
+  priceMethod      String // DISTANCE | ESTIMATE
+  perContainerKobo Int
+  totalKobo        Int
+  depositPct       Int // snapshot of the deposit % offered
+  paidKobo         Int       @default(0) // Σ PAID payments, kept in sync by the payment pipeline
+  currency         String    @default("NGN")
+  scheduledFor     DateTime?
+  driverName       String?
+  driverPhone      String?
+  truckPlate       String?
+  adminNote        String?
+  needsReview      Boolean   @default(false)
+  reviewNote       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  payments HaulagePayment[]
+
+  @@index([status, createdAt])
+  @@index([needsReview])
+}
+
+model HaulagePayment {
+  id                    String         @id @default(cuid())
+  requestId             String
+  request               HaulageRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  kind                  String // FULL | DEPOSIT | BALANCE
+  reference             String         @unique // Paystack reference, CZ_HL_...
+  idempotencyKey        String         @unique
+  amountKobo            Int
+  currency              String         @default("NGN")
+  status                String         @default("PENDING") // same state machine as Order
+  initAttempts          Int            @default(0)
+  paystackAccessCode    String?
+  paystackAuthUrl       String?
+  paystackTransactionId String?
+  channel               String?
+  gatewayResponse       String?
+  paidAt                DateTime?
+  verifyAttempts        Int            @default(0)
+  lastVerifiedAt        DateTime?
+  receiptSentAt         DateTime?
+  needsReview           Boolean        @default(false)
+  reviewNote            String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([requestId])
+  @@index([status, createdAt])
+}
+
+// Single row (id = 1), created by the app on first use.
+model HaulageSettings {
+  id              Int      @id @default(1)
+  enabled         Boolean  @default(true)
+  baseFeeKobo     Int
+  ratePerKmKobo   Int
+  minFeeKobo      Int
+  maxFeeKobo      Int
+  maxDistanceKm   Int
+  sizeMultipliers String // JSON { "20FT": 100, "40FT": 150, ... } percent
+  allowDeposit    Boolean  @default(true)
+  depositPct      Int      @default(50)
+  updatedAt       DateTime @updatedAt
+}

@@ -9,6 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages: [string, number, MetadataRoute.Sitemap[number]["changeFrequency"]][] = [
     ["", 1, "daily"],
     ["/browse", 0.9, "daily"],
+    ["/haulage", 0.8, "monthly"],
     ["/how-it-works", 0.6, "monthly"],
     ["/inspection", 0.6, "monthly"],
     ["/gallery", 0.5, "weekly"],
