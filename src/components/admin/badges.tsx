@@ -19,3 +19,13 @@ const FULFIL: Record<string, keyof typeof TONES> = { UNFULFILLED: "amber", PROCE
 export const FulfilmentBadge = ({ status }: { status: string }) => <Badge tone={FULFIL[status] ?? "grey"}>{status.toLowerCase()}</Badge>;
 
 export const FULFILMENT_STATUSES = ["UNFULFILLED", "PROCESSING", "DISPATCHED", "DELIVERED", "COLLECTED", "CANCELLED"] as const;
+
+const HAULAGE: Record<string, keyof typeof TONES> = { AWAITING_PAYMENT: "amber", CONFIRMED: "blue", SCHEDULED: "blue", IN_TRANSIT: "blue", DELIVERED: "green", CANCELLED: "grey" };
+export const HaulageStatusBadge = ({ status }: { status: string }) => <Badge tone={HAULAGE[status] ?? "grey"}>{status.replace("_", " ").toLowerCase()}</Badge>;
+
+export function HaulagePaidBadge({ total, paid }: { total: number; paid: number }) {
+  if (paid <= 0) return <Badge tone="grey">unpaid</Badge>;
+  if (paid < total) return <Badge tone="amber">part-paid</Badge>;
+  if (paid === total) return <Badge tone="green">paid</Badge>;
+  return <Badge tone="red">overpaid</Badge>;
+}

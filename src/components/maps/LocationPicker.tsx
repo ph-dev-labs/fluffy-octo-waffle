@@ -29,6 +29,8 @@ interface Props {
   /** Where the map opens when there's no pin yet. */
   initialCenter?: LatLng;
   initialZoom?: number;
+  /** Accessible name for the search box and map (e.g. "pickup location"). */
+  label?: string;
 }
 
 const NIGERIA_CENTER: LatLng = { lat: 9.08, lng: 8.68 };
@@ -46,7 +48,7 @@ function pinIcon(Leaflet: typeof L, color: string) {
  * Free OpenStreetMap location picker: click/tap or drag the pin, search an
  * address, or use the device location. Leaflet is loaded on the client only.
  */
-export function LocationPicker({ value, onChange, markers = [], disabled, className, initialCenter, initialZoom }: Props) {
+export function LocationPicker({ value, onChange, markers = [], disabled, className, initialCenter, initialZoom, label = "delivery location" }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const pin = useRef<L.Marker | null>(null);
@@ -213,7 +215,7 @@ export function LocationPicker({ value, onChange, markers = [], disabled, classN
               }}
               disabled={disabled}
               placeholder="Search street, estate or landmark…"
-              aria-label="Search for your delivery address"
+              aria-label={`Search for the ${label}`}
               className="h-11 w-full rounded-xl border border-ink-200 bg-white pr-3 pl-10 text-[15px] outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15"
             />
           </div>
@@ -242,7 +244,7 @@ export function LocationPicker({ value, onChange, markers = [], disabled, classN
       </div>
 
       <div className="relative overflow-hidden rounded-2xl ring-1 ring-ink-200">
-        <div ref={box} className="z-0 h-72 w-full bg-ink-100 sm:h-80" aria-label="Map — tap to place your delivery pin" />
+        <div ref={box} className="z-0 h-72 w-full bg-ink-100 sm:h-80" aria-label={`Map — tap to place the ${label} pin`} />
         {!ready ? <div className="skeleton absolute inset-0" /> : null}
         {ready && !value ? (
           <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center">

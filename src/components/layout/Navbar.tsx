@@ -60,7 +60,7 @@ export function Navbar() {
         >
           <Logo light={!solid} />
 
-          <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
+          <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex xl:gap-1">
             {nav.map((item) => {
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
@@ -68,7 +68,7 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "relative rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    "relative rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors xl:px-4",
                     solid ? (active ? "text-ink-900" : "text-ink-500 hover:text-ink-900") : active ? "text-white" : "text-white/75 hover:text-white",
                   )}
                 >

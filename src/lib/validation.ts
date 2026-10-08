@@ -99,3 +99,45 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+// ── Truck hire (haulage) ───────────────────────────────────────────────────
+
+const pin = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
+export const HAULAGE_SIZE_OPTIONS = ["20FT", "40FT", "40HC", "45HC"] as const;
+
+export const haulageQuoteSchema = z.object({
+  pickup: pin,
+  dropoff: pin,
+  size: z.enum(HAULAGE_SIZE_OPTIONS, "Choose a container size"),
+  count: z.number().int().min(1, "At least 1").max(20, "For more than 20 containers, contact us"),
+});
+
+export const haulageBookSchema = z.object({
+  idempotencyKey: z.uuid(),
+  quoteToken: z.string().min(10, "Set both locations to get a price").max(4000),
+  plan: z.enum(["FULL", "DEPOSIT"]),
+  customer: z.object({
+    fullName: trimmed(2, 120, "Full name"),
+    email,
+    phone,
+    companyName: z.string().trim().max(160).optional().or(z.literal("")),
+  }),
+  pickupAddress: trimmed(10, 500, "Pickup address"),
+  dropoffAddress: trimmed(10, 500, "Drop-off address"),
+  preferredDate: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .refine((v) => !v || (!Number.isNaN(Date.parse(v)) && Date.parse(v) > Date.now() - 86_400_000 && Date.parse(v) < Date.now() + 180 * 86_400_000), "Pick a date within the next 6 months"),
+  containerNumbers: z.string().trim().max(300).optional().or(z.literal("")),
+  notes: z.string().trim().max(1000).optional().or(z.literal("")),
+  website: honeypot,
+});
+export type HaulageBookInput = z.infer<typeof haulageBookSchema>;
+
+export const haulageLinkSchema = z.object({
+  reference: z.string().regex(/^HL-[A-Z0-9]{7}$/),
+  key: z.string().min(10).max(64),
+});
+
+export const haulagePaySchema = haulageLinkSchema.extend({ plan: z.enum(["FULL", "DEPOSIT"]), idempotencyKey: z.uuid() });

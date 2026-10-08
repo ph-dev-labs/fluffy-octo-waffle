@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Boxes, ClipboardList, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Menu, MessageSquareQuote, ScrollText, Truck, UserCog, Users, X } from "lucide-react";
+import { Boxes, Container, ClipboardList, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Menu, MessageSquareQuote, ScrollText, Truck, UserCog, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { logoutAction } from "@/app/admin/actions/auth";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/orders", label: "Orders", icon: ClipboardList, badgeKey: "review" },
   { href: "/admin/containers", label: "Containers", icon: Boxes },
   { href: "/admin/requests", label: "Requests", icon: Inbox, badgeKey: "requests" },
+  { href: "/admin/haulage", label: "Truck hire", icon: Container, badgeKey: "haulage" },
   { href: "/admin/delivery", label: "Delivery pricing", icon: Truck },
   { href: "/admin/gallery", label: "Gallery", icon: Images },
   { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
@@ -26,7 +27,7 @@ const OWNER_NAV = [
 
 interface Props {
   user: { name: string; email: string; role: string };
-  badges: { review: number; requests: number };
+  badges: { review: number; requests: number; haulage: number };
 }
 
 export function Sidebar({ user, badges }: Props) {

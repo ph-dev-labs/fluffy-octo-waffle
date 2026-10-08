@@ -6,6 +6,7 @@ import { clientIp } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { isValidWebhookSignature, PaymentsNotConfiguredError } from "@/lib/paystack";
 import { syncOrder } from "@/lib/payments";
+import { isHaulageReference, markHaulageRefunded, syncHaulagePayment } from "@/lib/haulage/payments";
 import { referenceSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -62,7 +63,11 @@ export async function POST(req: NextRequest) {
 
   try {
     if (HANDLED.has(type) && reference && referenceSchema.safeParse(reference).success) {
-      if (type === "refund.processed") {
+      if (isHaulageReference(reference)) {
+        // Truck-hire instalment (CZ_HL_…)
+        if (type === "refund.processed") await markHaulageRefunded(reference);
+        else if (!(await syncHaulagePayment(reference, `webhook:${type}`))) logger.warn("webhook.unknown_reference", { reference, type });
+      } else if (type === "refund.processed") {
         await db.order.updateMany({
           where: { reference, status: "PAID" },
           data: { status: "REFUNDED", needsReview: true, reviewNote: "Refund processed by Paystack." },

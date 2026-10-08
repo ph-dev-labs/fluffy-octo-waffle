@@ -141,3 +141,75 @@ export async function sendInvoiceEmail(opts: { to: string; customerName: string;
     attachments: [{ filename: `${opts.invoiceNumber}.pdf`, content: opts.pdf.toString("base64") }],
   });
 }
+
+// ── Truck hire (haulage) ───────────────────────────────────────────────────
+
+const KIND_LABEL: Record<string, string> = { FULL: "Full payment", DEPOSIT: "Deposit", BALANCE: "Balance" };
+
+function haulageSummary(r: { pickupAddress: string; dropoffAddress: string; containerCount: number; containerSize: string; distanceKm: number; totalKobo: number; paidKobo: number }) {
+  const due = Math.max(0, r.totalKobo - r.paidKobo);
+  return `<table width="100%" style="font-size:14px;border-collapse:collapse">
+<tr><td style="padding:4px 0;color:#5a6688">From</td><td align="right">${esc(r.pickupAddress)}</td></tr>
+<tr><td style="padding:4px 0;color:#5a6688">To</td><td align="right">${esc(r.dropoffAddress)}</td></tr>
+<tr><td style="padding:4px 0;color:#5a6688">Containers</td><td align="right">${r.containerCount} × ${esc(r.containerSize)} · ~${Math.round(r.distanceKm)} km</td></tr>
+<tr><td style="padding:8px 0 4px;border-top:1px solid #dde2ec">Total</td><td align="right" style="border-top:1px solid #dde2ec">${formatNaira(r.totalKobo)}</td></tr>
+<tr><td style="padding:4px 0">Paid</td><td align="right">${formatNaira(r.paidKobo)}</td></tr>
+<tr><td style="padding:4px 0;font-weight:bold">Balance</td><td align="right" style="font-weight:bold">${formatNaira(due)}</td></tr></table>`;
+}
+
+const button = (href: string, label: string) =>
+  `<p style="margin:24px 0"><a href="${href}" style="background:#192440;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">${esc(label)}</a></p>`;
+
+/** Sent when a booking is created, so the customer always has their private link (even if payment is interrupted). */
+export async function sendHaulageBookingLink(r: { reference: string; customerName: string; customerEmail: string; pickupAddress: string; dropoffAddress: string; containerCount: number; containerSize: string; distanceKm: number; totalKobo: number; paidKobo: number }, link: string) {
+  return sendMail({
+    to: r.customerEmail,
+    subject: `Your truck booking ${r.reference}`,
+    html: layout(`Booking ${r.reference}`, `<p style="font-size:14px;line-height:1.6">Hi ${esc(r.customerName.split(" ")[0] ?? "")}, here is your truck booking. Use the button below any time to check its status or make a payment.</p>${haulageSummary(r)}${button(link, "View booking & pay")}<p style="font-size:12px;color:#8a93ad">Keep this link private — anyone with it can view this booking.</p>`),
+    text: `Truck booking ${r.reference}. Total ${formatNaira(r.totalKobo)}. View and pay: ${link}`,
+  });
+}
+
+/** Receipt for one instalment + ops alert, exactly once per payment (claimed like order receipts). */
+export async function notifyHaulagePaid(paymentId: string) {
+  const claim = await db.haulagePayment.updateMany({ where: { id: paymentId, status: "PAID", receiptSentAt: null }, data: { receiptSentAt: new Date() } });
+  if (claim.count !== 1) return;
+  const p = await db.haulagePayment.findUniqueOrThrow({ where: { id: paymentId }, include: { request: true } });
+  const r = p.request;
+  const { bookingUrl } = await import("./haulage/link");
+  const due = Math.max(0, r.totalKobo - r.paidKobo);
+
+  const customer = await sendMail({
+    to: r.customerEmail,
+    subject: `Payment received — truck booking ${r.reference}`,
+    html: layout(
+      `Thank you, ${r.customerName.split(" ")[0] ?? ""}!`,
+      `<p style="font-size:14px;line-height:1.6">We've received your ${KIND_LABEL[p.kind]?.toLowerCase() ?? "payment"} of <b>${formatNaira(p.amountKobo)}</b>. ${due ? `The remaining <b>${formatNaira(due)}</b> is due before delivery.` : "Your booking is fully paid."} Our team will contact you to schedule the truck.</p>${haulageSummary(r)}${button(bookingUrl(r), due ? "View booking & pay balance" : "View booking")}<p style="font-size:13px;color:#5a6688">Payment reference: ${p.reference}</p>`,
+    ),
+    text: `Payment of ${formatNaira(p.amountKobo)} received for truck booking ${r.reference}. Balance: ${formatNaira(due)}. ${bookingUrl(r)}`,
+  });
+
+  if (ops().length) {
+    await sendMail({
+      to: ops(),
+      subject: `🚚 ${KIND_LABEL[p.kind] ?? "Payment"} received — truck booking ${r.reference} (${formatNaira(p.amountKobo)})`,
+      html: layout("Truck booking payment", `<p style="font-size:14px">${esc(r.customerName)} · ${esc(r.customerPhone)} · ${esc(r.customerEmail)}</p>${haulageSummary(r)}<p><a href="${env().APP_URL}/admin/haulage/${r.id}">Open in admin →</a></p>`),
+      text: `${KIND_LABEL[p.kind]} ${formatNaira(p.amountKobo)} for truck booking ${r.reference} from ${r.customerName} (${r.customerPhone}). Balance ${formatNaira(due)}.`,
+      replyTo: r.customerEmail,
+    });
+  }
+  if (!customer) await db.haulagePayment.update({ where: { id: paymentId }, data: { receiptSentAt: null } }); // cron retries
+}
+
+/** Admin-triggered reminder to pay the remaining balance. */
+export async function sendHaulageBalanceReminder(requestId: string) {
+  const r = await db.haulageRequest.findUniqueOrThrow({ where: { id: requestId } });
+  const due = Math.max(0, r.totalKobo - r.paidKobo);
+  const { bookingUrl } = await import("./haulage/link");
+  return sendMail({
+    to: r.customerEmail,
+    subject: `Balance due — truck booking ${r.reference}`,
+    html: layout(`Balance due: ${formatNaira(due)}`, `<p style="font-size:14px;line-height:1.6">Hi ${esc(r.customerName.split(" ")[0] ?? "")}, a balance of <b>${formatNaira(due)}</b> remains on your truck booking. Please pay it before the delivery date.</p>${haulageSummary(r)}${button(bookingUrl(r), `Pay ${formatNaira(due)}`)}`),
+    text: `Balance of ${formatNaira(due)} due on truck booking ${r.reference}. Pay here: ${bookingUrl(r)}`,
+  });
+}

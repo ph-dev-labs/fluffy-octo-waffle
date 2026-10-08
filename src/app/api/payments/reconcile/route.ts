@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { syncOrder } from "@/lib/payments";
-import { notifyOrderPaid } from "@/lib/mail";
+import { notifyHaulagePaid, notifyOrderPaid } from "@/lib/mail";
+import { syncHaulagePayment } from "@/lib/haulage/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ async function handle(req: NextRequest) {
     select: { reference: true },
   });
 
-  const summary = { checked: 0, paid: 0, failed: 0, errors: 0, abandoned: 0 };
+  const summary = { checked: 0, paid: 0, failed: 0, errors: 0, abandoned: 0, haulageChecked: 0, haulagePaid: 0 };
 
   for (const { reference } of candidates) {
     try {
@@ -72,6 +73,32 @@ async function handle(req: NextRequest) {
     take: 20,
   });
   for (const { id } of unsent) await notifyOrderPaid(id).catch((err) => logger.warn("reconcile.receipt_failed", { id, error: err }));
+
+  // ── Truck-hire instalments: same sweep, same rules ──
+  const haulage = await db.haulagePayment.findMany({
+    where: {
+      status: { in: ["PENDING", "FAILED", "ABANDONED"] },
+      paystackAccessCode: { not: null },
+      createdAt: { lt: new Date(now - 2 * MINUTE), gt: new Date(now - 72 * HOUR) },
+      OR: [{ lastVerifiedAt: null }, { lastVerifiedAt: { lt: new Date(now - 5 * MINUTE) } }],
+    },
+    orderBy: { createdAt: "asc" },
+    take: 30,
+    select: { reference: true },
+  });
+  for (const { reference } of haulage) {
+    try {
+      const p = await syncHaulagePayment(reference, "reconcile");
+      summary.haulageChecked++;
+      if (p?.status === "PAID") summary.haulagePaid++;
+    } catch (err) {
+      summary.errors++;
+      logger.warn("reconcile.haulage_failed", { reference, error: err });
+    }
+  }
+  await db.haulagePayment.updateMany({ where: { status: "PENDING", createdAt: { lt: new Date(now - 24 * HOUR) } }, data: { status: "ABANDONED" } });
+  const unsentHaulage = await db.haulagePayment.findMany({ where: { status: "PAID", receiptSentAt: null, paidAt: { gt: new Date(now - 72 * HOUR) } }, select: { id: true }, take: 20 });
+  for (const { id } of unsentHaulage) await notifyHaulagePaid(id).catch((err) => logger.warn("reconcile.haulage_receipt_failed", { id, error: err }));
 
   logger.info("reconcile.done", summary);
   return NextResponse.json(summary);
