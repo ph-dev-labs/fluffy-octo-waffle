@@ -49,7 +49,9 @@ export async function buildInvoiceData(inv: FullInvoice): Promise<InvoiceData> {
   const terminals = o.fulfilment === "PICKUP"
     ? (await db.container.findMany({ where: { id: { in: o.items.map((i) => i.containerId) } }, select: { terminal: true } })).map((c) => c.terminal)
     : [];
-  const zoneLabel = o.deliveryZone
+  const zoneLabel = o.deliveryState
+    ? [o.deliveryArea, o.deliveryState].filter(Boolean).join(", ")
+    : o.deliveryZone
     ? (await db.deliveryZone.findUnique({ where: { code: o.deliveryZone }, select: { label: true } }))?.label ??
       DEFAULT_DELIVERY_ZONES[o.deliveryZone as keyof typeof DEFAULT_DELIVERY_ZONES]?.label ??
       o.deliveryZone

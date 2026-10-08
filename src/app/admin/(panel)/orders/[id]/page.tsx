@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { AlertTriangle, Mail, MapPin, Phone, Building2 } from "lucide-react";
+import { AlertTriangle, Mail, MapPin, Phone, Building2, Navigation } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatNaira } from "@/lib/money";
@@ -84,7 +84,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </ul>
             <dl className="mt-2 space-y-1 border-t border-ink-100 pt-3 text-sm">
               <div className="flex justify-between"><dt className="text-ink-500">Subtotal</dt><dd className="tabular-nums">{formatNaira(o.subtotalKobo)}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-500">Delivery{o.deliveryZone ? ` (${o.deliveryZone})` : ""}</dt><dd className="tabular-nums">{formatNaira(o.deliveryKobo)}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-500">Delivery{o.deliveryState ? ` (${[o.deliveryArea, o.deliveryState].filter(Boolean).join(", ")})` : o.deliveryZone ? ` (${o.deliveryZone})` : ""}</dt><dd className="tabular-nums">{formatNaira(o.deliveryKobo)}</dd></div>
               <div className="flex justify-between pt-1 font-semibold"><dt>Total</dt><dd className="tabular-nums">{formatNaira(o.amountKobo)}</dd></div>
             </dl>
           </Card>
@@ -136,9 +136,34 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <li className="flex gap-2"><MapPin className="size-4 shrink-0 text-ink-400" />{o.fulfilment === "DELIVERY" ? o.deliveryAddress : "Pickup at terminal"}</li>
             </ul>
           </Card>
+          {o.fulfilment === "DELIVERY" && o.deliveryLat != null && o.deliveryLng != null ? (
+            <Card title="Delivery location">
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between gap-3"><dt className="text-ink-500">Place</dt><dd className="text-right">{[o.deliveryArea, o.deliveryState].filter(Boolean).join(", ") || "—"}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-ink-500">Priced by</dt><dd className="text-right">{METHOD_LABEL[o.deliveryMethod ?? ""] ?? o.deliveryMethod ?? "—"}</dd></div>
+                {o.deliveryDistanceKm != null ? <div className="flex justify-between gap-3"><dt className="text-ink-500">Distance</dt><dd className="text-right">{Math.round(o.deliveryDistanceKm)} km from {o.deliveryYard ?? "yard"}</dd></div> : null}
+                <div className="flex justify-between gap-3"><dt className="text-ink-500">Pin</dt><dd className="font-mono text-xs">{o.deliveryLat.toFixed(5)}, {o.deliveryLng.toFixed(5)}</dd></div>
+              </dl>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${o.deliveryLat},${o.deliveryLng}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink-900 px-3 text-sm font-semibold text-white hover:bg-brand-600">
+                  <Navigation className="size-4" /> Directions (Google Maps)
+                </a>
+                <a href={`https://www.openstreetmap.org/?mlat=${o.deliveryLat}&mlon=${o.deliveryLng}#map=17/${o.deliveryLat}/${o.deliveryLng}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold ring-1 ring-ink-200 hover:bg-ink-50">
+                  View on map
+                </a>
+              </div>
+            </Card>
+          ) : null}
           <OrderActions id={o.id} status={o.status} fulfilmentStatus={o.fulfilmentStatus} adminNote={o.adminNote ?? ""} />
         </div>
       </div>
     </>
   );
 }
+
+const METHOD_LABEL: Record<string, string> = {
+  AREA: "Fixed area rate",
+  STATE: "Fixed state rate",
+  DISTANCE: "Road distance",
+  ESTIMATE: "Distance estimate",
+};

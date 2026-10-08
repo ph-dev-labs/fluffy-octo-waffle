@@ -1,7 +1,6 @@
 import { randomBytes, scrypt } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { gallery, testimonials } from "../src/content/site";
-import { DEFAULT_DELIVERY_ZONES } from "../src/lib/pricing";
 
 const db = new PrismaClient();
 const R2 = "https://pub-ab61e9141ab444a2a62d1178bcf81b10.r2.dev/containers";
@@ -107,10 +106,7 @@ async function main() {
     await db.container.upsert({ where: { slug: c.slug }, update: {}, create: data });
   }
 
-  const zones = Object.entries(DEFAULT_DELIVERY_ZONES);
-  for (const [i, [code, z]] of zones.entries()) {
-    await db.deliveryZone.upsert({ where: { code }, update: {}, create: { code, label: z.label, perContainerKobo: z.perContainerKobo, sortOrder: i } });
-  }
+  // Delivery states, Lagos areas and distance-pricing defaults are created by migration 0004.
 
   if ((await db.galleryItem.count()) === 0) {
     await db.galleryItem.createMany({ data: gallery.map((g, i) => ({ type: g.type, url: g.src, caption: g.caption, sortOrder: i })) });
@@ -123,7 +119,7 @@ async function main() {
   }
 
   await seedAdmin();
-  console.log(`Seed complete: ${containers.length} containers, ${zones.length} delivery zones, gallery + testimonials.`);
+  console.log(`Seed complete: ${containers.length} containers, gallery + testimonials.`);
 }
 
 main()

@@ -1,13 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { saveGalleryItemAction, saveTestimonialAction, saveZoneAction } from "@/app/admin/actions/content";
+import { saveGalleryItemAction, saveTestimonialAction } from "@/app/admin/actions/content";
 import { createAdminAction, resetAdminPasswordAction } from "@/app/admin/actions/users";
 import { initialState, type ActionState } from "@/app/admin/actions/types";
 import { Input, Select, Textarea } from "@/components/ui/Field";
 import { MediaUploader } from "../MediaUploader";
 import { FormMessage, SubmitButton } from "../ui";
-import { cn } from "@/lib/utils";
 
 /** Clears a "create" form after a successful submit. */
 function useResetOnSuccess(state: ActionState, enabled: boolean) {
@@ -23,34 +22,6 @@ const Check = ({ name, label, defaultChecked }: { name: string; label: string; d
     <input type="checkbox" name={name} defaultChecked={defaultChecked} className="size-4 accent-brand-600" /> {label}
   </label>
 );
-
-// ── Delivery zone ──────────────────────────────────────────────────────────
-
-export interface ZoneValues {
-  id: string;
-  code: string;
-  label: string;
-  perContainerKobo: number;
-  sortOrder: number;
-  active: boolean;
-}
-
-export function ZoneForm({ zone }: { zone?: ZoneValues }) {
-  const [state, action] = useActionState(saveZoneAction.bind(null, zone?.id ?? null), initialState);
-  const ref = useResetOnSuccess(state, !zone);
-  const f = state.fields ?? {};
-  return (
-    <form ref={ref} action={action} className={cn("grid items-start gap-3 sm:grid-cols-[150px_1fr_160px_80px_auto_auto]", zone && "border-t border-ink-100 pt-4 first:border-0 first:pt-0")}>
-      <Input name="code" label="Code" required defaultValue={zone?.code} readOnly={!!zone} error={f.code} placeholder="LAGOS" />
-      <Input name="label" label="Region label" required defaultValue={zone?.label} error={f.label} placeholder="Lagos (within state)" />
-      <Input name="rateNaira" type="number" min={0} step="1" label="₦ per container" required defaultValue={zone ? zone.perContainerKobo / 100 : undefined} error={f.rateNaira} />
-      <Input name="sortOrder" type="number" min={0} label="Order" defaultValue={zone?.sortOrder ?? 0} error={f.sortOrder} />
-      <div className="pt-6"><Check name="active" label="Active" defaultChecked={zone?.active ?? true} /></div>
-      <div className="pt-7"><SubmitButton variant={zone ? "secondary" : "primary"} pendingText="…">{zone ? "Save" : "Add"}</SubmitButton></div>
-      <div className="sm:col-span-6"><FormMessage state={state} /></div>
-    </form>
-  );
-}
 
 // ── Gallery ────────────────────────────────────────────────────────────────
 

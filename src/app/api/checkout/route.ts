@@ -7,7 +7,9 @@ import { apiError, guardPost, ok, parseJson } from "@/lib/http";
 import { logger } from "@/lib/logger";
 import { initializeTransaction, PaymentsNotConfiguredError, PaystackError } from "@/lib/paystack";
 import { newReference, type OrderWithItems } from "@/lib/payments";
-import { CURRENCY, deliveryFeeKobo, MAX_ORDER_KOBO } from "@/lib/pricing";
+import { CURRENCY, MAX_ORDER_KOBO } from "@/lib/pricing";
+import { deliveryTotalKobo } from "@/lib/delivery/calc";
+import { verifyQuote, type DeliveryQuote } from "@/lib/delivery/quote-token";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -55,13 +57,18 @@ export async function POST(req: NextRequest) {
     return apiError(409, "INSUFFICIENT_STOCK", `Not enough stock for: ${outOfStock.map((c) => c.title).join(", ")}.`);
   }
 
-  const containerCount = [...quantities.values()].reduce((a, b) => a + b, 0);
   const subtotalKobo = containers.reduce((sum, c) => sum + c.priceKobo * quantities.get(c.id)!, 0);
+  // Delivery: charge exactly the fee the customer was shown, from the signed quote.
   let deliveryKobo = 0;
+  let quote: DeliveryQuote | null = null;
   if (input.fulfilment === "DELIVERY") {
-    const zone = await db.deliveryZone.findFirst({ where: { code: input.deliveryZone, active: true } });
-    if (!zone) return apiError(422, "VALIDATION_FAILED", "Please choose a delivery region.", { fields: { deliveryZone: "That delivery region is no longer available" } });
-    deliveryKobo = deliveryFeeKobo(zone, containerCount);
+    const v = verifyQuote(input.deliveryQuote!);
+    if (!v.ok) {
+      return apiError(409, "QUOTE_EXPIRED", v.reason === "expired" ? "Your delivery price has expired. We've refreshed it — please check the total and pay again." : "Please drop your delivery pin again.", { retryable: true });
+    }
+    quote = v.quote;
+    const units = containers.map((c) => ({ size: c.size, quantity: quantities.get(c.id)! }));
+    deliveryKobo = deliveryTotalKobo(quote.perSize, units, quote.perSize["20FT"] ?? 0);
   }
   const amountKobo = subtotalKobo + deliveryKobo;
 
@@ -86,8 +93,19 @@ export async function POST(req: NextRequest) {
         customerPhone: input.customer.phone,
         companyName: input.customer.companyName || null,
         fulfilment: input.fulfilment,
-        deliveryZone: input.fulfilment === "DELIVERY" ? input.deliveryZone : null,
+        deliveryZone: quote ? (quote.areaCode ?? quote.stateCode) : null,
         deliveryAddress: input.fulfilment === "DELIVERY" ? input.deliveryAddress || null : null,
+        ...(quote
+          ? {
+              deliveryState: quote.stateLabel,
+              deliveryArea: quote.areaLabel,
+              deliveryLat: quote.lat,
+              deliveryLng: quote.lng,
+              deliveryDistanceKm: quote.distanceKm,
+              deliveryMethod: quote.method,
+              deliveryYard: quote.yard,
+            }
+          : {}),
         items: {
           create: containers.map((c) => ({
             containerId: c.id,
