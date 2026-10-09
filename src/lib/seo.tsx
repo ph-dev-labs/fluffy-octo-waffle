@@ -28,6 +28,7 @@ export function organizationLd() {
     "@id": siteUrl("/#organization"),
     name: site.name,
     legalName: site.legalName,
+    ...(site.rcNumber ? { identifier: { "@type": "PropertyValue", propertyID: "CAC RC Number", value: site.rcNumber } } : {}),
     url: siteUrl("/"),
     logo: siteUrl("/brand/logo-full.png"),
     description: site.description,
