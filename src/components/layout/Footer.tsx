@@ -70,7 +70,7 @@ export function Footer() {
       </div>
       <div className="relative border-t border-white/5">
         <div className="container-x flex flex-col gap-2 py-6 text-xs text-ink-500 sm:flex-row sm:justify-between">
-          <p>© {new Date().getFullYear()} C-ZUCHI Group. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {site.legalName}{site.rcNumber ? ` · RC ${site.rcNumber}` : ""}. All rights reserved.</p>
           <p>Prices in Nigerian Naira (₦).</p>
         </div>
       </div>

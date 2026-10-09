@@ -7,7 +7,7 @@ export const site = {
   name: "C-ZUCHI",
   legalName: "C-ZUCHI Global Service Ltd",
   // TODO(client): CAC registration number, shown on invoices when set.
-  rcNumber: "",
+  rcNumber: "8902736",
   tagline: "Your Trusted Shipping Container Plug.",
   description: "Buy verified 20ft and 40ft shipping containers in Nigeria — new and used, inspected before sale, with nationwide delivery from our Lagos and Port Harcourt terminals.",
   seoTitle: "Shipping Containers for Sale in Nigeria — 20ft & 40ft, New & Used",
