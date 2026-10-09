@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -24,6 +24,7 @@ const optionalNaira = z
 function refresh() {
   revalidatePath("/admin/delivery");
   revalidatePath("/checkout");
+  revalidateTag("delivery-pricing"); // city landing-page estimates
 }
 
 const fmt = (kobo: number | null) => (kobo == null ? "inherit" : `₦${(kobo / 100).toLocaleString("en-NG")}`);

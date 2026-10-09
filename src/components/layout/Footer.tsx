@@ -10,11 +10,21 @@ const SOCIAL_ICONS: Record<string, React.ReactNode> = {
   tiktok: <path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5 2.6 2.6 0 0 1-2.6-2.6 2.6 2.6 0 0 1 3.4-2.47V9.67a5.69 5.69 0 0 0-6.4 5.63A5.7 5.7 0 0 0 9.86 21a5.69 5.69 0 0 0 5.69-5.69V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3a4.3 4.3 0 0 1-3.25-1.48Z" />,
 };
 
+const POPULAR = [
+  { href: "/shipping-containers/20ft-container-price-in-nigeria", label: "20ft container price" },
+  { href: "/shipping-containers/40ft-container-price-in-nigeria", label: "40ft container price" },
+  { href: "/shipping-containers/used-shipping-containers-for-sale", label: "Used containers for sale" },
+  { href: "/shipping-containers/shipping-containers-for-sale-in-lagos", label: "Containers in Lagos" },
+  { href: "/shipping-containers/shipping-containers-for-sale-in-abuja", label: "Containers in Abuja" },
+  { href: "/shipping-containers/shipping-containers-for-sale-in-port-harcourt", label: "Containers in Port Harcourt" },
+  { href: "/shipping-containers", label: "All sizes & cities →" },
+];
+
 export function Footer() {
   return (
     <footer className="relative overflow-hidden bg-ink-950 text-ink-300">
       <div className="corrugated absolute inset-0 opacity-50" aria-hidden />
-      <div className="container-x relative grid gap-12 py-16 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+      <div className="container-x relative grid gap-12 py-16 md:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_1.2fr_0.8fr_1.2fr]">
         <div className="space-y-5">
           <Logo light />
           <p className="max-w-sm text-sm leading-relaxed text-ink-400">{site.description}</p>
@@ -44,6 +54,20 @@ export function Footer() {
                 Book an inspection
               </Link>
             </li>
+            <li>
+              <Link href="/guides" className="transition-colors hover:text-white">
+                Buyer guides
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold tracking-wider text-white uppercase">Popular searches</h3>
+          <ul className="mt-4 space-y-3 text-sm">
+            {POPULAR.map((l) => (
+              <li key={l.href}><Link href={l.href} className="transition-colors hover:text-white">{l.label}</Link></li>
+            ))}
           </ul>
         </div>
 
