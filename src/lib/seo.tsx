@@ -34,7 +34,7 @@ export function organizationLd() {
     description: site.description,
     email: site.email,
     ...phone,
-    address: { "@type": "PostalAddress", addressLocality: "Lagos", addressCountry: "NG", streetAddress: site.address },
+    address: { "@type": "PostalAddress", addressLocality: "Apapa", addressRegion: "Lagos", addressCountry: "NG" },
     contactPoint: [{ "@type": "ContactPoint", contactType: "sales", email: site.email, ...phone, areaServed: "NG", availableLanguage: ["en"] }],
     ...(sameAs.length ? { sameAs } : {}),
   };
