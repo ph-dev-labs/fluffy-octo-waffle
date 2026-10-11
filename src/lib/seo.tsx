@@ -19,7 +19,8 @@ export function JsonLd({ data }: { data: Record<string, unknown> | Record<string
 const isPlaceholderPhone = /000\s?000\s?0000/.test(site.phone);
 const phone = isPlaceholderPhone ? {} : { telephone: site.phone };
 
-const sameAs = Object.values(site.socials).filter((u) => !/^https:\/\/(x|instagram|facebook|tiktok)\.com\/?$/.test(u)); // skip placeholder roots
+export const realSocials = Object.entries(site.socials).filter(([, u]) => !/^https:\/\/(x|instagram|facebook|tiktok)\.com\/?$/.test(u)); // skip placeholder roots
+const sameAs = [...realSocials.map(([, u]) => u), site.googleBusiness].filter(Boolean);
 
 export function organizationLd() {
   return {
