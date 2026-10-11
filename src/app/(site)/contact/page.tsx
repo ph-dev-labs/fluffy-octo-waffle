@@ -16,7 +16,7 @@ export default function ContactPage() {
     { icon: Phone, label: "Call us", value: site.phone, href: `tel:${site.phone.replace(/\s/g, "")}` },
     { icon: MessageCircle, label: "WhatsApp", value: "Chat with sales", href: site.whatsapp },
     { icon: Mail, label: "Email", value: site.email, href: `mailto:${site.email}` },
-    { icon: MapPin, label: "Head office", value: site.address },
+    { icon: MapPin, label: "Head office", value: `${site.address} — view on Google`, href: site.googleBusiness },
     { icon: Clock, label: "Opening hours", value: site.hours },
   ];
   return (

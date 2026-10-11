@@ -19,7 +19,8 @@ export function JsonLd({ data }: { data: Record<string, unknown> | Record<string
 const isPlaceholderPhone = /000\s?000\s?0000/.test(site.phone);
 const phone = isPlaceholderPhone ? {} : { telephone: site.phone };
 
-const sameAs = Object.values(site.socials).filter((u) => !/^https:\/\/(x|instagram|facebook|tiktok)\.com\/?$/.test(u)); // skip placeholder roots
+export const realSocials = Object.entries(site.socials).filter(([, u]) => !/^https:\/\/(x|instagram|facebook|tiktok)\.com\/?$/.test(u)); // skip placeholder roots
+const sameAs = [...realSocials.map(([, u]) => u), site.googleBusiness].filter(Boolean);
 
 export function organizationLd() {
   return {
@@ -28,12 +29,13 @@ export function organizationLd() {
     "@id": siteUrl("/#organization"),
     name: site.name,
     legalName: site.legalName,
+    ...(site.rcNumber ? { identifier: { "@type": "PropertyValue", propertyID: "CAC RC Number", value: site.rcNumber } } : {}),
     url: siteUrl("/"),
     logo: siteUrl("/brand/logo-full.png"),
     description: site.description,
     email: site.email,
     ...phone,
-    address: { "@type": "PostalAddress", addressLocality: "Lagos", addressCountry: "NG", streetAddress: site.address },
+    address: { "@type": "PostalAddress", addressLocality: "Apapa", addressRegion: "Lagos", addressCountry: "NG" },
     contactPoint: [{ "@type": "ContactPoint", contactType: "sales", email: site.email, ...phone, areaServed: "NG", availableLanguage: ["en"] }],
     ...(sameAs.length ? { sameAs } : {}),
   };
