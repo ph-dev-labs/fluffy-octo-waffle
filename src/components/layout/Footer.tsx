@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone, Clock, ShieldCheck } from "lucide-react";
+import { Mail, MapPin, Phone, Clock, ShieldCheck, Star } from "lucide-react";
 import { nav, site } from "@/content/site";
+import { realSocials } from "@/lib/seo";
 import { Logo } from "./Logo";
 
 const SOCIAL_ICONS: Record<string, React.ReactNode> = {
@@ -29,7 +30,7 @@ export function Footer() {
           <Logo light />
           <p className="max-w-sm text-sm leading-relaxed text-ink-400">{site.description}</p>
           <div className="flex gap-2">
-            {Object.entries(site.socials).map(([k, href]) => (
+            {realSocials.map(([k, href]) => (
               <a key={k} href={href} target="_blank" rel="noopener noreferrer" aria-label={k} className="grid size-10 place-items-center rounded-full bg-white/5 text-ink-300 transition-all hover:-translate-y-0.5 hover:bg-brand-600 hover:text-white">
                 <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
                   {SOCIAL_ICONS[k]}
@@ -77,7 +78,10 @@ export function Footer() {
             <li><Link href="/terms" className="hover:text-white">Terms &amp; conditions</Link></li>
             <li><Link href="/privacy" className="hover:text-white">Privacy policy</Link></li>
           </ul>
-          <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-xs text-ink-300">
+          <a href={site.googleReviewUrl || site.googleBusiness} target="_blank" rel="noopener noreferrer" className="mt-6 flex w-fit items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-xs text-ink-300 hover:bg-white/10 hover:text-white">
+            <Star className="size-3.5 fill-accent-500 text-accent-500" /> {site.googleReviewUrl ? "Review us on Google" : "Find us on Google"}
+          </a>
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-xs text-ink-300">
             <ShieldCheck className="size-3.5 text-success-600" /> Payments secured by Paystack
           </p>
         </div>
@@ -87,7 +91,7 @@ export function Footer() {
           <ul className="mt-4 space-y-3 text-sm">
             <li className="flex gap-3"><Phone className="size-4 shrink-0 text-accent-500" /><a href={`tel:${site.phone.replace(/\s/g, "")}`} className="hover:text-white">{site.phone}</a></li>
             <li className="flex gap-3"><Mail className="size-4 shrink-0 text-accent-500" /><a href={`mailto:${site.email}`} className="hover:text-white">{site.email}</a></li>
-            <li className="flex gap-3"><MapPin className="size-4 shrink-0 text-accent-500" />{site.address}</li>
+            <li className="flex gap-3"><MapPin className="size-4 shrink-0 text-accent-500" /><a href={site.googleBusiness} target="_blank" rel="noopener noreferrer" className="hover:text-white">{site.address}</a></li>
             <li className="flex gap-3"><Clock className="size-4 shrink-0 text-accent-500" />{site.hours}</li>
           </ul>
         </div>

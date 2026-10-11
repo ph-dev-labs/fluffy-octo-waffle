@@ -27,6 +27,10 @@ export const site = {
   email: "sales@c-zuchigrp.com",
   address: "Apapa, Lagos, Nigeria",
   hours: "Mon – Sat · 8:00 – 18:00 WAT",
+  /** Google Business Profile (permanent knowledge-graph id). */
+  googleBusiness: "https://www.google.com/search?kgmid=/g/11zy8w7kb_",
+  /** "Ask for reviews" link from the profile (g.page/r/…/review) — empty until provided. */
+  googleReviewUrl: "",
   socials: {
     x: "https://x.com",
     instagram: "https://instagram.com",
