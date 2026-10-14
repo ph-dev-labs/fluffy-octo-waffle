@@ -79,18 +79,21 @@ export function Card({ title, action, children, className }: { title?: ReactNode
 }
 
 /** Button that asks for confirmation before submitting its parent form. */
-export function ConfirmSubmit({ children, message, variant = "danger" }: { children: ReactNode; message: string; variant?: "danger" | "secondary" | "primary" }) {
+export function ConfirmSubmit({ children, message, variant = "danger", className, title }: { children: ReactNode; message: string; variant?: "danger" | "secondary" | "primary"; className?: string; title?: string }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
+      title={title}
+      aria-label={title}
       onClick={(e) => {
         if (!confirm(message)) e.preventDefault();
       }}
       className={cn(
         "inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium disabled:opacity-50",
         variant === "danger" ? "text-danger-600 hover:bg-danger-100" : variant === "primary" ? "bg-ink-900 text-white hover:bg-brand-600" : "text-ink-700 ring-1 ring-ink-200 hover:bg-ink-50",
+        className,
       )}
     >
       {pending ? <Loader2 className="size-4 animate-spin" /> : null}

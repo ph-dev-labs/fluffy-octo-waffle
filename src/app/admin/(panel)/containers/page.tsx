@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { Eye, EyeOff, Plus, Star } from "lucide-react";
+import { Archive, Eye, EyeOff, Plus, Star, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatNaira } from "@/lib/money";
 import { parseImages } from "@/lib/utils";
 import { SIZE_LABELS } from "@/lib/catalog";
-import { toggleContainerAction } from "@/app/admin/actions/containers";
+import { deleteContainerAction, toggleContainerAction } from "@/app/admin/actions/containers";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { ConfirmSubmit } from "@/components/admin/ui";
 import { Badge } from "@/components/admin/badges";
 import SmartImage from "@/components/ui/SmartImage";
 import { cn } from "@/lib/utils";
@@ -85,6 +86,15 @@ export default async function ContainersPage({ searchParams }: { searchParams: P
                           <button className="grid size-9 place-items-center rounded-lg text-ink-500 hover:bg-ink-100" title={c.active ? "Hide from store" : "Show in store"} aria-label="Toggle visibility">
                             {c.active ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                           </button>
+                        </form>
+                        <form action={deleteContainerAction.bind(null, c.id)}>
+                          <ConfirmSubmit
+                            className="min-w-9 justify-center px-2.5"
+                            title={c._count.orderItems > 0 ? "Archive (has orders)" : "Delete"}
+                            message={c._count.orderItems > 0 ? `"${c.title}" has orders, so it will be hidden (archived) instead of deleted. Continue?` : `Delete "${c.title}" and its photos permanently?`}
+                          >
+                            {c._count.orderItems > 0 ? <Archive className="size-4" /> : <Trash2 className="size-4" />}
+                          </ConfirmSubmit>
                         </form>
                       </div>
                     </td>
