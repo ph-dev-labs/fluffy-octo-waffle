@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 /** POST /api/haulage/quote — prices a truck from the pickup pin to the drop-off pin; returns a signed quote. */
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "haulage-quote", 30);
+  const blocked = await guardPost(req, "haulage-quote", 30);
   if (blocked) return blocked;
   const parsed = await parseJson(req, haulageQuoteSchema);
   if ("error" in parsed) return parsed.error;

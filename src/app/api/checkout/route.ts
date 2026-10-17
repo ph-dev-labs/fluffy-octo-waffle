@@ -25,7 +25,7 @@ export const runtime = "nodejs";
  * and access code back — it can never create a second charge.
  */
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "checkout", 10);
+  const blocked = await guardPost(req, "checkout", 10);
   if (blocked) return blocked;
 
   const parsed = await parseJson(req, checkoutSchema);

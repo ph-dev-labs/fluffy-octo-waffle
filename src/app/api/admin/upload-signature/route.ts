@@ -12,7 +12,7 @@ export const runtime = "nodejs";
  * to upload elsewhere in the account. Cloudinary rejects signatures > 1h old.
  */
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "admin-upload-sign", 120);
+  const blocked = await guardPost(req, "admin-upload-sign", 120);
   if (blocked) return blocked;
 
   const user = await getSessionUser();

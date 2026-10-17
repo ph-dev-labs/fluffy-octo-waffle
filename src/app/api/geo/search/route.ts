@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 /** GET /api/geo/search?q=… — address search inside Nigeria (proxied OpenStreetMap). */
 export async function GET(req: NextRequest) {
   if (!isSameOrigin(req)) return apiError(403, "FORBIDDEN_ORIGIN", "Request origin not allowed.");
-  const rl = rateLimit(`geo-search:${clientIp(req)}`, 15, 60_000);
+  const rl = await rateLimit(`geo-search:${clientIp(req)}`, 15, 60_000);
   if (!rl.ok) return apiError(429, "RATE_LIMITED", "Too many searches. Wait a moment, or drop the pin on the map instead.", { retryable: true, headers: { "Retry-After": String(rl.retryAfterSec) } });
 
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim();

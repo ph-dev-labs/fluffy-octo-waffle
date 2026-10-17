@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 /** POST /api/haulage/pay — next instalment (deposit/full before anything is paid, otherwise the balance). */
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "haulage-pay", 10);
+  const blocked = await guardPost(req, "haulage-pay", 10);
   if (blocked) return blocked;
   const parsed = await parseJson(req, haulagePaySchema);
   if ("error" in parsed) return parsed.error;

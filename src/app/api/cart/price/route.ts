@@ -10,7 +10,7 @@ import { parseImages } from "@/lib/utils";
  * always come from here.
  */
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "cart-price", 60);
+  const blocked = await guardPost(req, "cart-price", 60);
   if (blocked) return blocked;
 
   const parsed = await parseJson(req, cartPriceSchema);

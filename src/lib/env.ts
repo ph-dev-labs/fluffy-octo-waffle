@@ -23,6 +23,10 @@ const schema = z.object({
   RESEND_API_KEY: optionalString,
   MAIL_FROM: optionalString,
   MAIL_ADMIN_TO: optionalString,
+  UPSTASH_REDIS_REST_URL: optionalString.pipe(z.url().optional()),
+  UPSTASH_REDIS_REST_TOKEN: optionalString,
+  KV_REST_API_URL: optionalString.pipe(z.url().optional()),
+  KV_REST_API_TOKEN: optionalString,
   CRON_SECRET: z
     .string()
     .min(32, "CRON_SECRET must be at least 32 characters")

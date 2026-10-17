@@ -41,11 +41,11 @@ export function isSameOrigin(req: NextRequest): boolean {
 }
 
 /** Common guard for public state-changing JSON endpoints. */
-export function guardPost(req: NextRequest, bucket: string, limit: number, windowMs = 60_000) {
+export async function guardPost(req: NextRequest, bucket: string, limit: number, windowMs = 60_000) {
   if (!isSameOrigin(req)) return apiError(403, "FORBIDDEN_ORIGIN", "Request origin not allowed.");
   if (!req.headers.get("content-type")?.includes("application/json"))
     return apiError(415, "UNSUPPORTED_MEDIA_TYPE", "Expected application/json.");
-  const rl = rateLimit(`${bucket}:${clientIp(req)}`, limit, windowMs);
+  const rl = await rateLimit(`${bucket}:${clientIp(req)}`, limit, windowMs);
   if (!rl.ok)
     return apiError(429, "RATE_LIMITED", "Too many requests. Please wait a moment and try again.", {
       retryable: true,

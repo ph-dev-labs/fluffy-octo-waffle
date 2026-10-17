@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * is unguessable, and the response contains no personal data beyond a masked email.
  */
 export async function GET(req: NextRequest) {
-  const rl = rateLimit(`verify:${clientIp(req)}`, 40, 60_000);
+  const rl = await rateLimit(`verify:${clientIp(req)}`, 40, 60_000);
   if (!rl.ok) return apiError(429, "RATE_LIMITED", "Checking too often, slowing down…", { retryable: true });
 
   const parsed = referenceSchema.safeParse(req.nextUrl.searchParams.get("reference"));
