@@ -26,7 +26,14 @@ export const site = {
   whatsapp: "https://wa.me/2348033391757",
   email: "sales@c-zuchigrp.com",
   address: "Apapa, Lagos, Nigeria",
+  /** Matches the Google Business Profile (which has no street line). */
+  postalCode: "102272",
   hours: "Mon – Sat · 8:00 – 18:00 WAT",
+  /** Same hours, machine-readable for LocalBusiness JSON-LD. Keep in sync with `hours`. */
+  openingHours: { days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], opens: "08:00", closes: "18:00" },
+  // TODO(client): confirm the returns policy. Until set, no return policy is claimed in
+  // Product structured data. e.g. { days: 7, fees: "customer" } — or { days: 0 } for no returns.
+  returnPolicy: null as { days: number; fees?: "free" | "customer" } | null,
   /** Google Business Profile (permanent knowledge-graph id). */
   googleBusiness: "https://www.google.com/search?kgmid=/g/11zy8w7kb_",
   /** "Ask for reviews" link from the profile (g.page/r/…/review) — empty until provided. */
