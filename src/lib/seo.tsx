@@ -22,22 +22,45 @@ const phone = isPlaceholderPhone ? {} : { telephone: site.phone };
 export const realSocials = Object.entries(site.socials).filter(([, u]) => !/^https:\/\/(x|instagram|facebook|tiktok)\.com\/?$/.test(u)); // skip placeholder roots
 const sameAs = [...realSocials.map(([, u]) => u), site.googleBusiness].filter(Boolean);
 
+/** LocalBusiness (a subtype of Organization) so the business is eligible for local results. */
 export function organizationLd() {
+  const { days, opens, closes } = site.openingHours;
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "LocalBusiness",
     "@id": siteUrl("/#organization"),
     name: site.name,
     legalName: site.legalName,
     ...(site.rcNumber ? { identifier: { "@type": "PropertyValue", propertyID: "CAC RC Number", value: site.rcNumber } } : {}),
     url: siteUrl("/"),
     logo: siteUrl("/brand/logo-full.png"),
+    image: siteUrl("/brand/logo-full.png"),
     description: site.description,
     email: site.email,
     ...phone,
-    address: { "@type": "PostalAddress", addressLocality: "Apapa", addressRegion: "Lagos", addressCountry: "NG" },
+    address: { "@type": "PostalAddress", addressLocality: "Apapa", addressRegion: "Lagos", postalCode: site.postalCode, addressCountry: "NG" },
+    openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: days, opens, closes }],
+    areaServed: { "@type": "Country", name: "Nigeria" },
+    currenciesAccepted: "NGN",
+    ...(site.googleBusiness ? { hasMap: site.googleBusiness } : {}),
     contactPoint: [{ "@type": "ContactPoint", contactType: "sales", email: site.email, ...phone, areaServed: "NG", availableLanguage: ["en"] }],
     ...(sameAs.length ? { sameAs } : {}),
+  };
+}
+
+/** schema.org MerchantReturnPolicy from `site.returnPolicy`, or nothing while it's unconfirmed. */
+export function returnPolicyLd() {
+  const p = site.returnPolicy;
+  if (!p) return {};
+  const base = { "@type": "MerchantReturnPolicy", applicableCountry: "NG" };
+  if (p.days <= 0) return { hasMerchantReturnPolicy: { ...base, returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" } };
+  return {
+    hasMerchantReturnPolicy: {
+      ...base,
+      returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+      merchantReturnDays: p.days,
+      ...(p.fees ? { returnFees: p.fees === "free" ? "https://schema.org/FreeReturn" : "https://schema.org/ReturnFeesCustomerResponsibility" } : {}),
+    },
   };
 }
 

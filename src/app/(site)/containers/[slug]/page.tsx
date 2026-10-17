@@ -12,7 +12,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Reveal } from "@/components/ui/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
 import { QuoteSection } from "@/components/forms/QuoteSection";
-import { breadcrumbLd, JsonLd, siteUrl } from "@/lib/seo";
+import { breadcrumbLd, JsonLd, returnPolicyLd, siteUrl } from "@/lib/seo";
 import { site } from "@/content/site";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -69,6 +69,8 @@ export default async function ContainerPage({ params }: Props) {
       availability: c.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@id": siteUrl("/#organization") },
       areaServed: "NG",
+      // No shippingDetails: delivery is priced per drop-off pin, so there's no flat rate to state.
+      ...returnPolicyLd(),
     },
   };
 
