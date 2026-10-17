@@ -13,7 +13,7 @@ export const runtime = "nodejs";
  * instalment with Paystack (used right after the payment window closes).
  */
 export async function GET(req: NextRequest) {
-  const rl = rateLimit(`haulage-status:${clientIp(req)}`, 40, 60_000);
+  const rl = await rateLimit(`haulage-status:${clientIp(req)}`, 40, 60_000);
   if (!rl.ok) return apiError(429, "RATE_LIMITED", "Checking too often, slowing down…", { retryable: true });
   const sp = req.nextUrl.searchParams;
   const link = haulageLinkSchema.safeParse({ reference: sp.get("reference"), key: sp.get("k") });

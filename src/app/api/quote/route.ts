@@ -6,7 +6,7 @@ import { notifyOps } from "@/lib/mail";
 import { quoteSchema } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "quote", 5);
+  const blocked = await guardPost(req, "quote", 5);
   if (blocked) return blocked;
   const parsed = await parseJson(req, quoteSchema);
   if ("error" in parsed) return parsed.error;

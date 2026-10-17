@@ -26,7 +26,7 @@ function safeNext(next?: string) {
 
 export async function loginAction(_: ActionState, fd: FormData): Promise<ActionState> {
   const { ip } = await requestMeta();
-  if (!rateLimit(`admin-login:${ip}`, 10, 15 * 60_000).ok) return { message: "Too many attempts. Please wait 15 minutes and try again." };
+  if (!(await rateLimit(`admin-login:${ip}`, 10, 15 * 60_000)).ok) return { message: "Too many attempts. Please wait 15 minutes and try again." };
 
   const parsed = loginSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { message: GENERIC };

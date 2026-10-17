@@ -18,7 +18,7 @@ export const runtime = "nodejs";
  * (full or deposit). Retry-safe via `idempotencyKey`, exactly like checkout.
  */
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "haulage-book", 10);
+  const blocked = await guardPost(req, "haulage-book", 10);
   if (blocked) return blocked;
   const parsed = await parseJson(req, haulageBookSchema);
   if ("error" in parsed) return parsed.error;

@@ -26,7 +26,7 @@ const schema = z.object({
  * per-container fees only.
  */
 export async function POST(req: NextRequest) {
-  const blocked = guardPost(req, "delivery-quote", 30);
+  const blocked = await guardPost(req, "delivery-quote", 30);
   if (blocked) return blocked;
   const parsed = await parseJson(req, schema);
   if ("error" in parsed) return parsed.error;
