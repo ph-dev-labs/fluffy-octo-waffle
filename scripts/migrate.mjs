@@ -9,13 +9,22 @@
 // 3. Skips migrations on Vercel PREVIEW deploys (they share the production DB;
 //    unreviewed branches must not change its schema). Set MIGRATE_ON_PREVIEW=true
 //    to opt in, e.g. when previews use their own Neon branch database.
+// 4. Skips migrations on non-Vercel builds (a local `npm run build`), since a
+//    local .env may point at production. `npm run db:migrate` passes --run to
+//    apply them deliberately.
 import { spawnSync } from "node:child_process";
 
 const LOCK_ID = 72707369; // Prisma Migrate's advisory lock key
 
-if (process.env.VERCEL_ENV === "preview" && process.env.MIGRATE_ON_PREVIEW !== "true") {
-  console.log("[migrate] Preview deploy: skipping migrations (shared production database).");
-  process.exit(0);
+if (!process.argv.includes("--run")) {
+  if (!process.env.VERCEL_ENV) {
+    console.log("[migrate] Not a Vercel build: skipping migrations. Run `npm run db:migrate` to apply them.");
+    process.exit(0);
+  }
+  if (process.env.VERCEL_ENV === "preview" && process.env.MIGRATE_ON_PREVIEW !== "true") {
+    console.log("[migrate] Preview deploy: skipping migrations (shared production database).");
+    process.exit(0);
+  }
 }
 
 const direct = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING || process.env.DIRECT_URL;

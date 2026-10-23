@@ -15,7 +15,7 @@ npm run dev
 | Script | What it does |
 | --- | --- |
 | `npm run dev` / `start` | Next.js |
-| `npm run build` | Applies pending DB migrations, then builds (this is what Vercel runs) |
+| `npm run build` | Applies pending DB migrations, then builds (this is what Vercel runs). Migrations only run on Vercel production builds; locally and on previews they are skipped |
 | `npm run db:migrate` / `db:seed` | Apply migrations / load starter content + create the first owner admin |
 | `npm test` | Payment state machine, webhook signature, password hashing, Cloudinary signing, DB concurrency tests |
 | `npm run typecheck` / `lint` | Static checks |
@@ -155,7 +155,7 @@ Order statuses: `PENDING → PAID | FAILED | ABANDONED | AMOUNT_MISMATCH | REFUN
 
 ## Deploy checklist
 
-1. Create a Postgres database (Neon, Supabase or Vercel → Storage) and set `DATABASE_URL` to its **direct** connection string. Migrations run automatically on every build. Seed it once with `npm run db:seed` from a machine whose `.env` points at it.
+1. Create a Postgres database (Neon, Supabase or Vercel → Storage) and set `DATABASE_URL` to its **direct** connection string. Migrations run automatically on every Vercel production build (run `npm run db:migrate` to apply them anywhere else). Seed it once with `npm run db:seed` from a machine whose `.env` points at it.
 2. Set `APP_URL`, `PAYSTACK_SECRET_KEY` (live), `CRON_SECRET`, `CLOUDINARY_*`, `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_ADMIN_TO` and optionally `PAYSTACK_WEBHOOK_IPS` (see `.env.example`).
 3. In the Paystack dashboard, set the webhook URL to `https://<domain>/api/payments/webhook`.
 4. Schedule `/api/payments/reconcile` (needs `Authorization: Bearer $CRON_SECRET`):
