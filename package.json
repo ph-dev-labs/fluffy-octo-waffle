@@ -11,7 +11,7 @@
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
     "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
-    "db:migrate": "node scripts/migrate.mjs",
+    "db:migrate": "node scripts/migrate.mjs --run",
     "build:local": "next build"
   },
   "dependencies": {
