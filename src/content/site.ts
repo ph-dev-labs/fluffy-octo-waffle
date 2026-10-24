@@ -39,10 +39,10 @@ export const site = {
   /** "Ask for reviews" link from the profile (g.page/r/…/review) — empty until provided. */
   googleReviewUrl: "",
   socials: {
-    x: "https://x.com",
-    instagram: "https://instagram.com",
-    facebook: "https://facebook.com",
-    tiktok: "https://tiktok.com",
+    facebook: "https://www.facebook.com/czuchigrp",
+    instagram: "https://www.instagram.com/czuchigrp/",
+    youtube: "https://www.youtube.com/@czuchigrp",
+    linkedin: "https://www.linkedin.com/company/c-zuchi-global-service-ltd",
   },
 };
 
