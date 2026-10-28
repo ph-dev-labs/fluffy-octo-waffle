@@ -1,6 +1,7 @@
-import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { formatContainerNumber } from "@/lib/container-number";
 import { LOGO_MARK_PNG } from "./logo";
+import { SIGNATURE_PNG, STAMP_LOGO_PNG } from "./stamp";
 
 // Brand palette (from the logo)
 const NAVY = "#192440";
@@ -9,16 +10,33 @@ const INK = "#1f2937";
 const MUTED = "#6b7280";
 const LINE = "#e5e7eb";
 const SOFT = "#f6f7fb";
+// Rubber-stamp ink
+const STAMP = "#2344b2";
+
+// Wrap whole words only ("cargo-wor-thy" looks sloppy on a legal document).
+Font.registerHyphenationCallback((word) => [word]);
 
 export interface InvoiceData {
   number: string;
   issuedAt: Date;
   status: "DRAFT" | "SENT";
-  company: { legalName: string; address: string; phone: string; email: string; website: string; rcNumber?: string };
-  customer: { name: string; company?: string | null; email: string; phone: string };
+  company: {
+    legalName: string;
+    address: string;
+    phone: string;
+    email: string;
+    website: string;
+    rcNumber?: string;
+    bank: { name: string; accountName: string; accountNumber: string };
+  };
+  customer: { name: string; company?: string | null; email: string; phone: string; address?: string | null };
   fulfilment: { method: "PICKUP" | "DELIVERY"; address?: string | null; zone?: string | null; terminals: string[] };
-  order: { reference: string; paidAt: Date | null; channel: string | null; paystackId: string | null };
-  lines: { description: string; containerNumber: string; unitPriceKobo: number }[];
+  /** Website orders only (paid online via Paystack). Admin-raised invoices have none. */
+  order: { reference: string; channel: string | null; paystackId: string | null } | null;
+  paidAt: Date | null;
+  /** Payment due date — admin-raised invoices awaiting payment. */
+  dueAt: Date | null;
+  lines: { description: string; containerNumber: string; quantity: number; unitPriceKobo: number }[];
   subtotalKobo: number;
   deliveryKobo: number;
   totalKobo: number;
@@ -28,6 +46,7 @@ export interface InvoiceData {
 // Built-in PDF fonts have no ₦ glyph, so amounts use the ISO code (standard on invoices).
 const money = (kobo: number) => `NGN ${(kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const date = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric", timeZone: "Africa/Lagos" });
+const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Africa/Lagos" });
 
 const s = StyleSheet.create({
   page: { paddingTop: 0, paddingBottom: 64, paddingHorizontal: 0, fontFamily: "Helvetica", fontSize: 9, color: INK, lineHeight: 1.4 },
@@ -57,9 +76,10 @@ const s = StyleSheet.create({
   tr: { flexDirection: "row", paddingVertical: 8, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: LINE },
   cNo: { width: 24 },
   cDesc: { flex: 1, paddingRight: 8 },
-  cCont: { width: 120 },
-  cQty: { width: 34, textAlign: "center" },
-  cAmt: { width: 100, textAlign: "right" },
+  cCont: { width: 110 },
+  cQty: { width: 30, textAlign: "center" },
+  cUnit: { width: 86, textAlign: "right" },
+  cAmt: { width: 90, textAlign: "right" },
   mono: { fontFamily: "Courier-Bold", fontSize: 9.5, color: NAVY, letterSpacing: 0.5 },
 
   totalsWrap: { flexDirection: "row", justifyContent: "space-between", marginTop: 16 },
@@ -75,6 +95,27 @@ const s = StyleSheet.create({
   sectionTitle: { fontFamily: "Helvetica-Bold", fontSize: 8, color: NAVY, letterSpacing: 1, marginBottom: 4 },
   small: { fontSize: 8, color: MUTED },
 
+  closing: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 22 },
+  closingLeft: { width: 300 },
+  bankBox: { borderWidth: 1, borderColor: LINE, borderLeftWidth: 3, borderLeftColor: GOLD, borderRadius: 4, padding: 12 },
+  bankRow: { flexDirection: "row", marginTop: 3 },
+  bankLabel: { width: 84, color: MUTED },
+  bankValue: { flex: 1, fontFamily: "Helvetica-Bold", color: NAVY },
+  accountNo: { fontFamily: "Courier-Bold", fontSize: 13, color: NAVY, letterSpacing: 1.5 },
+
+  signBlock: { width: 190, alignItems: "center" },
+  stamp: { width: 184, borderWidth: 1.6, borderColor: STAMP, paddingVertical: 7, paddingHorizontal: 9, transform: "rotate(-2deg)", opacity: 0.92 },
+  stampHead: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  stampLogo: { width: 38, height: 24, marginRight: 6 },
+  stampName: { fontFamily: "Helvetica-Bold", fontSize: 17, color: STAMP, letterSpacing: 0.5, lineHeight: 1 },
+  stampSub: { fontFamily: "Helvetica-Bold", fontSize: 6.5, color: STAMP, letterSpacing: 0.6, marginTop: 5, textAlign: "right" },
+  stampRow: { flexDirection: "row", alignItems: "flex-end", marginTop: 9 },
+  stampLabel: { fontFamily: "Helvetica-Bold", fontSize: 8.5, color: STAMP, width: 30 },
+  stampLine: { flex: 1, minHeight: 12, borderBottomWidth: 1, borderBottomColor: STAMP, borderBottomStyle: "dashed" },
+  stampDate: { fontFamily: "Helvetica-Oblique", fontSize: 9, color: STAMP, paddingLeft: 8, lineHeight: 1.2 },
+  signature: { position: "absolute", left: 76, top: 24, width: 72, height: 57 },
+  signCaption: { fontSize: 7.5, color: MUTED, marginTop: 8 },
+
   draft: { position: "absolute", top: 330, left: 90, fontFamily: "Helvetica-Bold", fontSize: 110, color: "#e5e7eb", transform: "rotate(-30deg)", opacity: 0.6 },
 
   footerLine: { position: "absolute", bottom: 40, left: 40, right: 40, height: 1.5, backgroundColor: GOLD },
@@ -85,9 +126,10 @@ const s = StyleSheet.create({
 export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const { company, customer, order, fulfilment } = data;
   const companyLines = [company.address, `${company.phone} · ${company.email}`, company.website, company.rcNumber ? `RC ${company.rcNumber}` : null].filter(Boolean) as string[];
+  const paid = !!data.paidAt;
 
   return (
-    <Document title={`Invoice ${data.number}`} author={company.legalName} subject={`Invoice ${data.number} for order ${order.reference}`} creator={company.legalName} producer={company.legalName}>
+    <Document title={`Invoice ${data.number}`} author={company.legalName} subject={order ? `Invoice ${data.number} for order ${order.reference}` : `Invoice ${data.number}`} creator={company.legalName} producer={company.legalName}>
       <Page size="A4" style={s.page}>
         {data.status === "DRAFT" ? <Text style={s.draft} fixed>DRAFT</Text> : null}
         <View style={s.topBar} fixed />
@@ -110,8 +152,8 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <Text style={s.title}>INVOICE</Text>
               <Meta label="Invoice no." value={data.number} />
               <Meta label="Issue date" value={date(data.issuedAt)} />
-              <Meta label="Order ref." value={order.reference} />
-              {order.paidAt ? <Meta label="Paid on" value={date(order.paidAt)} /> : null}
+              {order ? <Meta label="Order ref." value={order.reference} /> : null}
+              {data.paidAt ? <Meta label="Paid on" value={date(data.paidAt)} /> : data.dueAt ? <Meta label="Due date" value={date(data.dueAt)} /> : null}
             </View>
           </View>
 
@@ -121,14 +163,15 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <Text style={s.partyLabel}>BILLED TO</Text>
               <Text style={s.partyName}>{customer.name}</Text>
               {customer.company ? <Text>{customer.company}</Text> : null}
+              {customer.address ? <Text>{customer.address}</Text> : null}
               <Text>{customer.email}</Text>
               <Text>{customer.phone}</Text>
             </View>
             <View style={s.partyBox}>
-              <Text style={s.partyLabel}>{fulfilment.method === "DELIVERY" ? "DELIVERED TO" : "COLLECTED FROM"}</Text>
+              <Text style={s.partyLabel}>{fulfilment.method === "DELIVERY" ? (order ? "DELIVERED TO" : "DELIVER TO") : order ? "COLLECTED FROM" : "COLLECTION"}</Text>
               {fulfilment.method === "DELIVERY" ? (
                 <>
-                  <Text>{fulfilment.address}</Text>
+                  <Text>{fulfilment.address || "Address to be confirmed"}</Text>
                   {fulfilment.zone ? <Text style={s.small}>Delivery region: {fulfilment.zone}</Text> : null}
                 </>
               ) : (
@@ -144,25 +187,27 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <Text style={[s.th, s.cDesc]}>DESCRIPTION</Text>
               <Text style={[s.th, s.cCont]}>CONTAINER NO.</Text>
               <Text style={[s.th, s.cQty]}>QTY</Text>
+              <Text style={[s.th, s.cUnit]}>UNIT PRICE</Text>
               <Text style={[s.th, s.cAmt]}>AMOUNT</Text>
             </View>
             {data.lines.map((l, i) => (
               <View key={i} style={[s.tr, i % 2 === 1 ? { backgroundColor: SOFT } : {}]} wrap={false}>
                 <Text style={s.cNo}>{i + 1}</Text>
                 <Text style={s.cDesc}>{l.description}</Text>
-                <Text style={[s.cCont, s.mono]}>{formatContainerNumber(l.containerNumber)}</Text>
-                <Text style={s.cQty}>1</Text>
-                <Text style={s.cAmt}>{money(l.unitPriceKobo)}</Text>
+                <Text style={[s.cCont, s.mono]}>{l.containerNumber ? formatContainerNumber(l.containerNumber) : "—"}</Text>
+                <Text style={s.cQty}>{l.quantity}</Text>
+                <Text style={s.cUnit}>{money(l.unitPriceKobo)}</Text>
+                <Text style={s.cAmt}>{money(l.unitPriceKobo * l.quantity)}</Text>
               </View>
             ))}
           </View>
 
           {/* Totals + PAID stamp */}
           <View style={s.totalsWrap} wrap={false}>
-            {order.paidAt ? (
+            {data.paidAt ? (
               <View style={s.paidBox}>
                 <Text style={s.paidText}>PAID</Text>
-                <Text style={s.paidSub}>{date(order.paidAt)}{order.channel ? ` · ${order.channel}` : ""}</Text>
+                <Text style={s.paidSub}>{date(data.paidAt)}{order?.channel ? ` · ${order.channel}` : ""}</Text>
               </View>
             ) : (
               <View />
@@ -171,29 +216,45 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <TotalRow label="Subtotal" value={money(data.subtotalKobo)} />
               <TotalRow label={fulfilment.method === "DELIVERY" ? "Delivery" : "Pickup"} value={fulfilment.method === "DELIVERY" ? money(data.deliveryKobo) : "No charge"} />
               <View style={s.grand}>
-                <Text style={s.grandText}>Total paid</Text>
+                <Text style={s.grandText}>{paid ? "Total paid" : "Amount due"}</Text>
                 <Text style={s.grandText}>{money(data.totalKobo)}</Text>
               </View>
             </View>
           </View>
 
-          {/* Payment + notes */}
-          <View style={s.section} wrap={false}>
-            <Text style={s.sectionTitle}>PAYMENT DETAILS</Text>
-            <Text style={s.small}>
-              Paid online via Paystack{order.channel ? ` (${order.channel})` : ""}. Payment reference {order.reference}
-              {order.paystackId ? ` · transaction ${order.paystackId}` : ""}.
-            </Text>
-          </View>
           {data.note ? (
             <View style={s.section} wrap={false}>
               <Text style={s.sectionTitle}>NOTES</Text>
               <Text>{data.note}</Text>
             </View>
           ) : null}
-          <View style={s.section} wrap={false}>
-            <Text style={{ fontFamily: "Helvetica-Bold", color: NAVY, fontSize: 10 }}>Thank you for your business.</Text>
-            <Text style={s.small}>Questions about this invoice? Contact {company.email} or {company.phone}, quoting {data.number}.</Text>
+
+          {/* Payment details + company stamp */}
+          <View style={s.closing} wrap={false}>
+            <View style={s.closingLeft}>
+              <Text style={s.sectionTitle}>PAYMENT DETAILS</Text>
+              {order ? (
+                <Text style={s.small}>
+                  Paid online via Paystack{order.channel ? ` (${order.channel})` : ""}. Payment reference {order.reference}
+                  {order.paystackId ? ` · transaction ${order.paystackId}` : ""}.
+                </Text>
+              ) : paid ? (
+                <Text style={s.small}>Payment received with thanks on {date(data.paidAt!)}.</Text>
+              ) : (
+                <View style={s.bankBox}>
+                  <Text style={{ color: MUTED, marginBottom: 4 }}>Please pay by bank transfer to:</Text>
+                  <View style={s.bankRow}><Text style={s.bankLabel}>Bank</Text><Text style={s.bankValue}>{company.bank.name}</Text></View>
+                  <View style={s.bankRow}><Text style={s.bankLabel}>Account name</Text><Text style={s.bankValue}>{company.bank.accountName}</Text></View>
+                  <View style={[s.bankRow, { alignItems: "center" }]}><Text style={s.bankLabel}>Account number</Text><Text style={s.accountNo}>{company.bank.accountNumber}</Text></View>
+                  <Text style={[s.small, { marginTop: 6 }]}>
+                    Use <Text style={{ fontFamily: "Helvetica-Bold", color: NAVY }}>{data.number}</Text> as the transfer reference{data.dueAt ? ` and pay by ${date(data.dueAt)}` : ""}, then send your proof of payment to {company.email}.
+                  </Text>
+                </View>
+              )}
+              <Text style={{ fontFamily: "Helvetica-Bold", color: NAVY, fontSize: 10, marginTop: 16 }}>Thank you for your business.</Text>
+              <Text style={s.small}>Questions about this invoice? Contact {company.email} or {company.phone}, quoting {data.number}.</Text>
+            </View>
+            <CompanyStamp date={data.issuedAt} />
           </View>
         </View>
 
@@ -203,6 +264,37 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
         <Text style={[s.small, s.footerRight]} fixed>{data.number}</Text>
       </Page>
     </Document>
+  );
+}
+
+/** The company's rubber stamp, signed and dated — mirrors the physical stamp. */
+function CompanyStamp({ date: d }: { date: Date }) {
+  return (
+    <View style={s.signBlock}>
+      <View style={s.stamp}>
+        <View style={s.stampHead}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt */}
+          <Image src={STAMP_LOGO_PNG} style={s.stampLogo} />
+          <View>
+            <Text style={s.stampName}>C-ZUCHI</Text>
+            <Text style={s.stampSub}>GLOBAL SERVICE  LTD.</Text>
+          </View>
+        </View>
+        <View style={s.stampRow}>
+          <Text style={s.stampLabel}>Sign:</Text>
+          <View style={s.stampLine} />
+        </View>
+        <View style={s.stampRow}>
+          <Text style={s.stampLabel}>Date:</Text>
+          <View style={s.stampLine}>
+            <Text style={s.stampDate}>{shortDate(d)}</Text>
+          </View>
+        </View>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt */}
+        <Image src={SIGNATURE_PNG} style={s.signature} />
+      </View>
+      <Text style={s.signCaption}>Authorised signatory</Text>
+    </View>
   );
 }
 

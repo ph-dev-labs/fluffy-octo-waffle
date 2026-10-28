@@ -3,6 +3,7 @@ import { db } from "./db";
 import { env } from "./env";
 import { logger } from "./logger";
 import { formatNaira } from "./money";
+import { site } from "@/content/site";
 
 // Transactional email via Resend (https://resend.com) — plain HTTPS API, no SDK.
 // If RESEND_API_KEY is not set, emails are logged and skipped so nothing else breaks.
@@ -122,22 +123,34 @@ export async function notifyOps(subject: string, fields: Record<string, string |
 }
 
 /** Emails an invoice PDF to the customer (staff on CC via MAIL_ADMIN_TO). Returns true on success. */
-export async function sendInvoiceEmail(opts: { to: string; customerName: string; invoiceNumber: string; orderReference: string; totalKobo: number; pdf: Buffer }) {
+export async function sendInvoiceEmail(opts: { to: string; customerName: string; invoiceNumber: string; orderReference: string | null; totalKobo: number; paid: boolean; dueAt?: Date | null; pdf: Buffer }) {
   const first = opts.customerName.split(" ")[0];
+  const due = opts.dueAt ? opts.dueAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Lagos" }) : null;
+  const row = (k: string, v: string) => `<tr><td style="color:#5a6688;padding-right:16px">${k}</td><td>${v}</td></tr>`;
+  const intro = opts.orderReference
+    ? "Thank you for choosing C-ZUCHI. Your container order has been completed and your invoice is attached as a PDF for your records."
+    : opts.paid
+    ? "Thank you for your payment. Your invoice is attached as a PDF for your records."
+    : "Thank you for your interest in C-ZUCHI. Please find your invoice attached as a PDF.";
+  const payBlock = opts.paid
+    ? ""
+    : `<p style="font-size:14px;line-height:1.6">To confirm your order, please pay by bank transfer${due ? ` by <b>${esc(due)}</b>` : ""}:</p>
+<table style="font-size:14px;margin:8px 0 16px;background:#f6f8fc;border-radius:8px;padding:12px">${row("Bank", esc(site.bank.name))}${row("Account name", esc(site.bank.accountName))}${row("Account number", `<b style="font-size:16px;letter-spacing:1px">${esc(site.bank.accountNumber)}</b>`)}${row("Reference", `<b>${esc(opts.invoiceNumber)}</b>`)}</table>
+<p style="font-size:14px;line-height:1.6">Once you've paid, reply to this email with your proof of payment and we'll get your containers moving.</p>`;
   return sendMail({
     to: opts.to,
-    subject: `Invoice ${opts.invoiceNumber} — C-ZUCHI order ${opts.orderReference}`,
+    subject: opts.orderReference ? `Invoice ${opts.invoiceNumber} — C-ZUCHI order ${opts.orderReference}` : `Invoice ${opts.invoiceNumber} from C-ZUCHI`,
     replyTo: ops()[0],
     html: layout(
       `Your invoice ${opts.invoiceNumber}`,
       `<p style="font-size:14px;line-height:1.6">Hello ${esc(first)},</p>
-<p style="font-size:14px;line-height:1.6">Thank you for choosing C-ZUCHI. Your container order has been completed and your invoice is attached as a PDF for your records.</p>
-<table style="font-size:14px;margin:16px 0"><tr><td style="color:#5a6688;padding-right:16px">Invoice</td><td><b>${esc(opts.invoiceNumber)}</b></td></tr>
-<tr><td style="color:#5a6688;padding-right:16px">Order reference</td><td>${esc(opts.orderReference)}</td></tr>
-<tr><td style="color:#5a6688;padding-right:16px">Amount paid</td><td>${formatNaira(opts.totalKobo)}</td></tr></table>
-<p style="font-size:13px;color:#5a6688">Questions about this invoice? Simply reply to this email.</p>`,
+<p style="font-size:14px;line-height:1.6">${intro}</p>
+<table style="font-size:14px;margin:16px 0">${row("Invoice", `<b>${esc(opts.invoiceNumber)}</b>`)}${opts.orderReference ? row("Order reference", esc(opts.orderReference)) : ""}${row(opts.paid ? "Amount paid" : "Amount due", formatNaira(opts.totalKobo))}</table>
+${payBlock}<p style="font-size:13px;color:#5a6688">Questions about this invoice? Simply reply to this email.</p>`,
     ),
-    text: `Hello ${first}, your invoice ${opts.invoiceNumber} for order ${opts.orderReference} (${formatNaira(opts.totalKobo)}) is attached. Reply to this email with any questions.`,
+    text: opts.paid
+      ? `Hello ${first}, your invoice ${opts.invoiceNumber}${opts.orderReference ? ` for order ${opts.orderReference}` : ""} (${formatNaira(opts.totalKobo)}) is attached. Reply to this email with any questions.`
+      : `Hello ${first}, your invoice ${opts.invoiceNumber} (${formatNaira(opts.totalKobo)}) is attached. Please pay by bank transfer to ${site.bank.name}, ${site.bank.accountName}, account ${site.bank.accountNumber}, using ${opts.invoiceNumber} as the reference${due ? `, by ${due}` : ""}. Reply to this email with your proof of payment.`,
     attachments: [{ filename: `${opts.invoiceNumber}.pdf`, content: opts.pdf.toString("base64") }],
   });
 }

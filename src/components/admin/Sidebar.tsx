@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Boxes, Container, ClipboardList, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Menu, MessageSquareQuote, ScrollText, Truck, UserCog, Users, X } from "lucide-react";
+import { Boxes, Container, ClipboardList, ExternalLink, FileText, Images, Inbox, LayoutDashboard, LogOut, Menu, MessageSquareQuote, ScrollText, Truck, UserCog, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { logoutAction } from "@/app/admin/actions/auth";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { LogoMark } from "@/components/layout/Logo";
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList, badgeKey: "review" },
+  { href: "/admin/invoices", label: "Invoices", icon: FileText },
   { href: "/admin/containers", label: "Containers", icon: Boxes },
   { href: "/admin/requests", label: "Requests", icon: Inbox, badgeKey: "requests" },
   { href: "/admin/haulage", label: "Truck hire", icon: Container, badgeKey: "haulage" },
