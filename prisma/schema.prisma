@@ -124,6 +124,8 @@ model QuoteRequest {
   condition   String
   message     String?
   createdAt   DateTime @default(now())
+
+  invoices Invoice[]
 }
 
 model InspectionRequest {
@@ -256,7 +258,9 @@ model Invoice {
   id               String    @id @default(cuid())
   seq              Int       @unique @default(autoincrement())
   number           String    @unique // e.g. INV-2026-00001
-  orderId          String    @unique
+  // Set for invoices issued against a website order. Admin-raised invoices (e.g. answering
+  // a quote request) have no order: their customer, lines and delivery live on the invoice.
+  orderId          String?   @unique
   containerNumbers String // JSON array: one ISO 6346 number per container unit, in item order
   note             String?
   status           String    @default("DRAFT") // DRAFT | SENT
@@ -266,7 +270,23 @@ model Invoice {
   sendCount        Int       @default(0)
   createdById      String?
   updatedAt        DateTime  @updatedAt
-  order            Order     @relation(fields: [orderId], references: [id])
+  order            Order?    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  // ── Admin-raised invoices only ──
+  quoteRequestId   String?
+  customerName     String?
+  customerEmail    String?
+  customerPhone    String?
+  companyName      String?
+  customerAddress  String?
+  lines            String? // JSON: [{ description, containerNumber, quantity, unitPriceKobo }]
+  deliveryKobo     Int?
+  deliveryAddress  String?
+  dueAt            DateTime?
+  paidAt           DateTime?
+  quoteRequest     QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+
+  @@index([quoteRequestId])
 }
 
 // ── Truck hire (haulage) ────────────────────────────────────────────────────

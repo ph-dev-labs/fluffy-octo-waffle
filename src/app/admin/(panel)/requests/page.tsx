@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Mail, Phone, RotateCcw, Trash2 } from "lucide-react";
+import { Check, FilePlus2, FileText, Mail, Phone, RotateCcw, Trash2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { deleteRequestAction, setRequestStatusAction } from "@/app/admin/actions/content";
@@ -26,6 +26,8 @@ interface Row {
   phone?: string;
   lines: [string, string | null | undefined][];
   body?: string | null;
+  /** Quote requests only: invoices already raised for it. */
+  invoices?: { id: string; number: string }[];
 }
 
 export default async function RequestsPage({ searchParams }: { searchParams: Promise<{ tab?: string; show?: string }> }) {
@@ -70,6 +72,11 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
               </div>
               <div className="flex items-center gap-1">
                 <span className="mr-2 text-xs text-ink-400">{r.createdAt.toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })}</span>
+                {kind === "quote" ? (
+                  <Link href={`/admin/invoices/new?quote=${r.id}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-ink-900 px-3 text-sm font-medium text-white hover:bg-brand-600">
+                    <FilePlus2 className="size-4" /> Create invoice
+                  </Link>
+                ) : null}
                 <form action={setRequestStatusAction.bind(null, kind, r.id, r.status === "NEW" ? "HANDLED" : "NEW")}>
                   <button className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium ring-1 ring-ink-200 hover:bg-ink-50">
                     {r.status === "NEW" ? <><Check className="size-4" /> Mark handled</> : <><RotateCcw className="size-4" /> Reopen</>}
@@ -86,6 +93,16 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
               ))}
             </dl>
             {r.body ? <p className="mt-3 rounded-xl bg-ink-50 p-3 text-sm whitespace-pre-line">{r.body}</p> : null}
+            {r.invoices?.length ? (
+              <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink-500">
+                Invoiced:
+                {r.invoices.map((inv) => (
+                  <Link key={inv.id} href={`/admin/invoices/${inv.id}`} className="inline-flex items-center gap-1 font-mono font-semibold text-brand-600 hover:underline">
+                    <FileText className="size-3.5" /> {inv.number}
+                  </Link>
+                ))}
+              </p>
+            ) : null}
           </li>
         ))}
         {!rows.length ? <li className="rounded-2xl bg-white p-12 text-center text-ink-500 ring-1 ring-ink-900/5">Nothing here. 🎉</li> : null}
@@ -97,9 +114,9 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
 async function loadRows(kind: Kind, where: { status?: string }): Promise<Row[]> {
   const opts = { where, orderBy: { createdAt: "desc" as const }, take: 100 };
   if (kind === "quote") {
-    return (await db.quoteRequest.findMany(opts)).map((q) => ({
+    return (await db.quoteRequest.findMany({ ...opts, include: { invoices: { select: { id: true, number: true }, orderBy: { seq: "asc" } } } })).map((q) => ({
       id: q.id, status: q.status, createdAt: q.createdAt, title: q.companyName, email: q.email, phone: q.phone,
-      lines: [["Size", q.size || "Any"], ["Quantity", q.quantity], ["Condition", q.condition.toLowerCase()]], body: q.message,
+      lines: [["Size", q.size || "Any"], ["Quantity", q.quantity], ["Condition", q.condition.toLowerCase()]], body: q.message, invoices: q.invoices,
     }));
   }
   if (kind === "inspection") {

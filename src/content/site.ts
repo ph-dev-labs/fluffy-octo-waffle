@@ -28,6 +28,8 @@ export const site = {
   address: "Apapa, Lagos, Nigeria",
   /** Matches the Google Business Profile (which has no street line). */
   postalCode: "102272",
+  /** Bank transfer details printed on unpaid invoices. */
+  bank: { name: "Guaranty Trust Bank (GTBank)", accountName: "C-ZUCHI Global Service", accountNumber: "3004115689" },
   hours: "Mon – Sat · 8:00 – 18:00 WAT",
   /** Same hours, machine-readable for LocalBusiness JSON-LD. Keep in sync with `hours`. */
   openingHours: { days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], opens: "08:00", closes: "18:00" },
