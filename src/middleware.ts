@@ -2,6 +2,19 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const IMAGE_HOSTS = ["https://pub-ab61e9141ab444a2a62d1178bcf81b10.r2.dev", "https://res.cloudinary.com"];
 const ADMIN_COOKIES = ["__Host-cz_admin", "cz_admin"];
+const SMARTSUPP_HOSTS = [
+  "https://www.smartsupp.com",
+  "https://www.smartsuppchat.com",
+  "https://*.smartsupp.com",
+  "https://*.smartsuppchat.com",
+  "https://*.smartsuppcdn.com",
+  "https://widget-v3.smartsuppcdn.com",
+  "wss://*.smartsupp.com",
+  "wss://*.smartsuppchat.com",
+  "wss://*.smartsuppcdn.com",
+  "https://*.smartsupp.io",
+  "wss://*.smartsupp.io",
+];
 
 /**
  * Per-request nonce-based Content Security Policy. Next.js reads the nonce
@@ -27,14 +40,14 @@ export function middleware(req: NextRequest) {
 
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.paystack.co ${isDev ? "'unsafe-eval'" : ""}`,
-    `style-src 'self' 'unsafe-inline' https://*.paystack.co https://paystack.com`,
-    `img-src 'self' data: blob: ${IMAGE_HOSTS.join(" ")} https://tile.openstreetmap.org https://*.paystack.co https://*.paystack.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.paystack.co ${SMARTSUPP_HOSTS.join(" ")} ${isDev ? "'unsafe-eval'" : ""}`,
+    `style-src 'self' 'unsafe-inline' https://*.paystack.co https://paystack.com ${SMARTSUPP_HOSTS.join(" ")}`,
+    `img-src 'self' data: blob: ${IMAGE_HOSTS.join(" ")} https://tile.openstreetmap.org https://*.paystack.co https://*.paystack.com ${SMARTSUPP_HOSTS.join(" ")}`,
     `media-src 'self' ${IMAGE_HOSTS.join(" ")}`,
-    `font-src 'self' data: https://*.paystack.co`,
-    `connect-src 'self' https://api.cloudinary.com https://api.paystack.co https://*.paystack.co https://*.paystack.com ${isDev ? "ws:" : ""}`,
-    `frame-src https://checkout.paystack.com https://*.paystack.co https://*.paystack.com`,
-    `form-action 'self' https://checkout.paystack.com`,
+    `font-src 'self' data: https://*.paystack.co ${SMARTSUPP_HOSTS.join(" ")}`,
+    `connect-src 'self' https://api.cloudinary.com https://api.paystack.co https://*.paystack.co https://*.paystack.com ${SMARTSUPP_HOSTS.join(" ")} ${isDev ? "ws:" : ""}`,
+    `frame-src https://checkout.paystack.com https://*.paystack.co https://*.paystack.com ${SMARTSUPP_HOSTS.join(" ")}`,
+    `form-action 'self' https://checkout.paystack.com https://*.smartsupp.com https://*.smartsuppchat.com`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `object-src 'none'`,

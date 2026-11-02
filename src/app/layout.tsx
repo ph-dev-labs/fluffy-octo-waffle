@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
+import { SmartsuppLoader } from "@/components/SmartsuppLoader";
 import { MotionProvider } from "@/components/layout/MotionProvider";
 import { site } from "@/content/site";
 import "./globals.css";
@@ -74,6 +75,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           {children}
           <Toaster position="top-center" richColors closeButton />
         </MotionProvider>
+        <SmartsuppLoader />
       </body>
     </html>
   );
