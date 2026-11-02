@@ -112,7 +112,7 @@ export function ManualInvoiceForm({ invoiceId, initial, stock, sent, onDone, onC
 
         {v.lines.map((l, i) => {
           const err = (k: string) => f[`lines.${i}.${k}`];
-          const cn6346 = l.containerNumber.trim() ? checkContainerNumber(l.containerNumber) : null;
+          const cn6346 = l.containerNumber?.trim() ? checkContainerNumber(l.containerNumber) : null;
           return (
             <div key={i} className="rounded-xl bg-ink-50 p-3 ring-1 ring-ink-100">
               <div className="grid gap-3 sm:grid-cols-[1fr_11rem]">
