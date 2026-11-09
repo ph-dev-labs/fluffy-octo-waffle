@@ -284,6 +284,7 @@ model Invoice {
   deliveryAddress  String?
   dueAt            DateTime?
   paidAt           DateTime?
+  currency         String    @default("NGN")
   quoteRequest     QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
 
   @@index([quoteRequestId])

@@ -5,7 +5,7 @@ import { useActionState, useRef, useState } from "react";
 import { saveManualInvoiceAction } from "@/app/admin/actions/invoices";
 import { initialState } from "@/app/admin/actions/types";
 import { checkContainerNumber } from "@/lib/container-number";
-import { formatNaira } from "@/lib/money";
+import { formatMoney, formatNaira, INVOICE_CURRENCIES, type InvoiceCurrency } from "@/lib/money";
 import { Input, Textarea } from "@/components/ui/Field";
 import { FormMessage, SubmitButton } from "../ui";
 
@@ -23,6 +23,7 @@ export interface ManualInvoiceValues {
   customerPhone: string;
   customerAddress: string;
   deliveryAddress: string;
+  currency: InvoiceCurrency;
   deliveryNaira: string;
   dueDate: string;
   note: string;
@@ -43,6 +44,7 @@ interface Props {
 }
 
 const num = (v: string) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const moneySymbol = (currency: InvoiceCurrency) => currency === "USD" ? "US$" : "₦";
 
 export function ManualInvoiceForm({ invoiceId, initial, stock, sent, onDone, onCancel }: Props) {
   const [state, action] = useActionState(async (prev: typeof initialState, fd: FormData) => {
@@ -50,12 +52,10 @@ export function ManualInvoiceForm({ invoiceId, initial, stock, sent, onDone, onC
     if (res.ok) onDone?.();
     return res;
   }, initialState);
-  // Controlled so a failed save doesn't wipe what the admin typed (React resets uncontrolled fields after an action).
   const [v, setV] = useState(initial);
   const set = <K extends keyof ManualInvoiceValues>(k: K, value: ManualInvoiceValues[K]) => setV((p) => ({ ...p, [k]: value }));
   const setLine = (i: number, patch: Partial<ManualLineValue>) => set("lines", v.lines.map((l, k) => (k === i ? { ...l, ...patch } : l)));
   const [intent, setIntent] = useState<"draft" | "send">("draft");
-  // Written synchronously on click so the submitted FormData always has the right intent.
   const intentRef = useRef<HTMLInputElement>(null);
   const choose = (x: "draft" | "send") => {
     if (intentRef.current) intentRef.current.value = x;
@@ -65,12 +65,12 @@ export function ManualInvoiceForm({ invoiceId, initial, stock, sent, onDone, onC
   const f = state.fields ?? {};
   const subtotal = v.lines.reduce((sum, l) => sum + Math.round(num(l.unitPriceNaira) * 100) * Math.max(0, Math.trunc(num(l.quantity))), 0);
   const delivery = Math.round(num(v.deliveryNaira) * 100);
+  const currencySymbol = moneySymbol(v.currency);
 
   const addFromStock = (id: string) => {
     const c = stock.find((x) => x.id === id);
     if (!c) return;
     const line = { ...EMPTY_LINE, description: c.label, unitPriceNaira: String(c.priceNaira) };
-    // Replace the untouched starter row instead of leaving a blank line above.
     const blank = v.lines.length === 1 && !v.lines[0].description && !v.lines[0].unitPriceNaira;
     set("lines", blank ? [line] : [...v.lines, line]);
   };
@@ -132,8 +132,8 @@ export function ManualInvoiceForm({ invoiceId, initial, stock, sent, onDone, onC
               </div>
               <div className="mt-3 grid grid-cols-[5rem_1fr_auto] items-end gap-3 sm:grid-cols-[6rem_12rem_1fr_auto]">
                 <Input label="Qty" type="number" min={1} step={1} value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} error={err("quantity")} />
-                <Input label="Unit price (₦)" type="number" min={0} step="1" value={l.unitPriceNaira} onChange={(e) => setLine(i, { unitPriceNaira: e.target.value })} error={err("unitPriceNaira")} />
-                <p className="hidden pb-3 text-right text-sm font-semibold text-ink-700 sm:block">{formatNaira(Math.round(num(l.unitPriceNaira) * 100) * Math.max(0, Math.trunc(num(l.quantity))))}</p>
+                <Input label={`Unit price (${currencySymbol})`} type="number" min={0} step="1" value={l.unitPriceNaira} onChange={(e) => setLine(i, { unitPriceNaira: e.target.value })} error={err("unitPriceNaira")} />
+                <p className="hidden pb-3 text-right text-sm font-semibold text-ink-700 sm:block">{formatMoney(Math.round(num(l.unitPriceNaira) * 100) * Math.max(0, Math.trunc(num(l.quantity))), v.currency)}</p>
                 <button
                   type="button"
                   onClick={() => set("lines", v.lines.filter((_, k) => k !== i))}
@@ -157,18 +157,24 @@ export function ManualInvoiceForm({ invoiceId, initial, stock, sent, onDone, onC
         <legend className="mb-3 font-display text-base font-bold">Delivery &amp; terms</legend>
         <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
           <Input name="deliveryAddress" label="Delivery address" hint="Leave empty if the client collects from our terminal." value={v.deliveryAddress} onChange={(e) => set("deliveryAddress", e.target.value)} error={f.deliveryAddress} />
-          <Input name="deliveryNaira" label="Delivery cost (₦)" type="number" min={0} step="1" value={v.deliveryNaira} onChange={(e) => set("deliveryNaira", e.target.value)} error={f.deliveryNaira} />
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-ink-600">Currency</label>
+            <select name="currency" value={v.currency} onChange={(e) => set("currency", e.target.value as InvoiceCurrency)} className="h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-700 outline-none focus:border-brand-500">
+              {INVOICE_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-[12rem_1fr]">
           <Input name="dueDate" label="Payment due" type="date" value={v.dueDate} onChange={(e) => set("dueDate", e.target.value)} error={f.dueDate} />
           <Textarea name="note" label="Note on invoice" rows={2} maxLength={1000} placeholder="e.g. Price valid for 7 days. Delivery within 3 working days of payment." value={v.note} onChange={(e) => set("note", e.target.value)} error={f.note} />
         </div>
+        <Input name="deliveryNaira" label={`Delivery cost (${currencySymbol})`} type="number" min={0} step="1" value={v.deliveryNaira} onChange={(e) => set("deliveryNaira", e.target.value)} error={f.deliveryNaira} />
       </fieldset>
 
       <dl className="ml-auto max-w-xs space-y-1.5 rounded-xl bg-ink-50 p-4 text-sm">
-        <div className="flex justify-between"><dt className="text-ink-500">Subtotal</dt><dd>{formatNaira(subtotal)}</dd></div>
-        <div className="flex justify-between"><dt className="text-ink-500">Delivery</dt><dd>{v.deliveryAddress || delivery ? formatNaira(delivery) : "Collection"}</dd></div>
-        <div className="flex justify-between border-t border-ink-200 pt-1.5 text-base font-bold"><dt>Amount due</dt><dd>{formatNaira(subtotal + delivery)}</dd></div>
+        <div className="flex justify-between"><dt className="text-ink-500">Subtotal</dt><dd>{formatMoney(subtotal, v.currency)}</dd></div>
+        <div className="flex justify-between"><dt className="text-ink-500">Delivery</dt><dd>{v.deliveryAddress || delivery ? formatMoney(delivery, v.currency) : "Collection"}</dd></div>
+        <div className="flex justify-between border-t border-ink-200 pt-1.5 text-base font-bold"><dt>Amount due</dt><dd>{formatMoney(subtotal + delivery, v.currency)}</dd></div>
       </dl>
 
       <FormMessage state={state} />

@@ -117,6 +117,7 @@ async function sendInvoice(invoiceId: string, adminId: string): Promise<ActionSt
     totalKobo: to.totalKobo,
     paid: !!(inv.order?.paidAt ?? inv.paidAt),
     dueAt: inv.dueAt,
+    currency: (inv.currency as "NGN" | "USD") ?? "NGN",
     pdf,
   });
   if (!ok) return { message: `The invoice is saved, but the email couldn't be sent — ${lastMailError ?? "unknown error"}. You can download the PDF and send it manually.` };
@@ -134,17 +135,19 @@ async function sendInvoice(invoiceId: string, adminId: string): Promise<ActionSt
 
 const naira = (label: string) => z.coerce.number(`Enter ${label}`).min(0, `${label} can't be negative`).max(10_000_000_000);
 const optional = (max: number) => z.string().trim().max(max).transform((v) => v || null);
+const invoiceCurrencySchema = z.enum(["NGN", "USD"]).default("NGN");
 
 const lineSchema = z.object({
   description: z.string().trim().min(3, "Describe the container").max(200),
-  containerNumber: z.string().trim().max(20).transform((v, ctx) => {
+  containerNumber: z.preprocess((value) => {
+    if (value === null || value === undefined) return "";
+    return typeof value === "string" ? value.trim() : String(value);
+  }, z.string().max(20).transform((v, ctx) => {
     if (!v) return "";
-    // Format only: the check digit is shown as a warning in the form, since the admin may be
-    // copying a number straight off the door.
     const r = checkContainerNumber(v, { skipCheckDigit: true });
     if (!r.ok) ctx.addIssue({ code: "custom", message: r.message });
     return r.value;
-  }),
+  })),
   quantity: z.coerce.number("Enter a quantity").int("Whole containers only").min(1, "At least 1").max(500),
   unitPriceNaira: naira("a price").refine((v) => v > 0, "Price must be greater than 0"),
 });
@@ -156,6 +159,7 @@ const manualSchema = z.object({
   customerPhone: z.string().trim().min(7, "Enter a phone number").max(40),
   customerAddress: optional(300),
   deliveryAddress: optional(300),
+  currency: invoiceCurrencySchema,
   deliveryNaira: naira("the delivery cost"),
   dueDate: z.string().trim().transform((v, ctx) => {
     if (!v) return null;
@@ -195,6 +199,7 @@ export async function saveManualInvoiceAction(invoiceId: string | null, _: Actio
     customerAddress: v.customerAddress,
     deliveryAddress: v.deliveryAddress,
     deliveryKobo: Math.round(v.deliveryNaira * 100),
+    currency: v.currency,
     dueAt: v.dueDate,
     note: v.note,
     lines: JSON.stringify(lines),

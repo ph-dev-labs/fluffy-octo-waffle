@@ -1,5 +1,6 @@
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { formatContainerNumber } from "@/lib/container-number";
+import { formatMoney } from "@/lib/money";
 import { LOGO_MARK_PNG } from "./logo";
 import { SIGNATURE_PNG, STAMP_LOGO_PNG } from "./stamp";
 
@@ -40,11 +41,12 @@ export interface InvoiceData {
   subtotalKobo: number;
   deliveryKobo: number;
   totalKobo: number;
+  currency: "NGN" | "USD";
   note?: string | null;
 }
 
 // Built-in PDF fonts have no ₦ glyph, so amounts use the ISO code (standard on invoices).
-const money = (kobo: number) => `NGN ${(kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (kobo: number, currency: "NGN" | "USD" = "NGN") => formatMoney(kobo, currency);
 const date = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric", timeZone: "Africa/Lagos" });
 const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Africa/Lagos" });
 
@@ -196,8 +198,8 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 <Text style={s.cDesc}>{l.description}</Text>
                 <Text style={[s.cCont, s.mono]}>{l.containerNumber ? formatContainerNumber(l.containerNumber) : "—"}</Text>
                 <Text style={s.cQty}>{l.quantity}</Text>
-                <Text style={s.cUnit}>{money(l.unitPriceKobo)}</Text>
-                <Text style={s.cAmt}>{money(l.unitPriceKobo * l.quantity)}</Text>
+                <Text style={s.cUnit}>{money(l.unitPriceKobo, data.currency)}</Text>
+                <Text style={s.cAmt}>{money(l.unitPriceKobo * l.quantity, data.currency)}</Text>
               </View>
             ))}
           </View>
@@ -213,11 +215,11 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <View />
             )}
             <View style={s.totals}>
-              <TotalRow label="Subtotal" value={money(data.subtotalKobo)} />
-              <TotalRow label={fulfilment.method === "DELIVERY" ? "Delivery" : "Pickup"} value={fulfilment.method === "DELIVERY" ? money(data.deliveryKobo) : "No charge"} />
+              <TotalRow label="Subtotal" value={money(data.subtotalKobo, data.currency)} />
+              <TotalRow label={fulfilment.method === "DELIVERY" ? "Delivery" : "Pickup"} value={fulfilment.method === "DELIVERY" ? money(data.deliveryKobo, data.currency) : "No charge"} />
               <View style={s.grand}>
                 <Text style={s.grandText}>{paid ? "Total paid" : "Amount due"}</Text>
-                <Text style={s.grandText}>{money(data.totalKobo)}</Text>
+                <Text style={s.grandText}>{money(data.totalKobo, data.currency)}</Text>
               </View>
             </View>
           </View>

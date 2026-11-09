@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { dateInputValue, invoiceStockOptions, manualTotals, parseLines } from "@/lib/invoice/service";
 import { formatContainerNumber } from "@/lib/container-number";
-import { formatNaira } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Card } from "@/components/admin/ui";
 import { ManualInvoicePanel } from "@/components/admin/forms/ManualInvoicePanel";
@@ -23,6 +23,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const lines = parseLines(inv.lines);
   const totals = manualTotals(lines, inv.deliveryKobo ?? 0);
   const stock = await invoiceStockOptions();
+  const currency = (inv.currency as "NGN" | "USD") ?? "NGN";
 
   return (
     <>
@@ -37,7 +38,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <Card>
           <ManualInvoicePanel
-            invoice={{ id: inv.id, number: inv.number, status: inv.status, sentAt: inv.sentAt?.toISOString() ?? null, sentTo: inv.sentTo, sendCount: inv.sendCount, paidAt: inv.paidAt?.toISOString() ?? null, totalLabel: formatNaira(totals.totalKobo) }}
+            invoice={{ id: inv.id, number: inv.number, status: inv.status, sentAt: inv.sentAt?.toISOString() ?? null, sentTo: inv.sentTo, sendCount: inv.sendCount, paidAt: inv.paidAt?.toISOString() ?? null, totalLabel: formatMoney(totals.totalKobo, currency) }}
             stock={stock}
             values={{
               customerName: inv.customerName ?? "",
@@ -46,6 +47,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               customerPhone: inv.customerPhone ?? "",
               customerAddress: inv.customerAddress ?? "",
               deliveryAddress: inv.deliveryAddress ?? "",
+              currency: (inv.currency as "NGN" | "USD") ?? "NGN",
               deliveryNaira: String((inv.deliveryKobo ?? 0) / 100),
               dueDate: inv.dueAt ? dateInputValue(inv.dueAt) : "",
               note: inv.note ?? "",
@@ -70,14 +72,14 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                     <td className="py-2.5 pr-3">{l.description}</td>
                     <td className="py-2.5 pr-3 font-mono text-[#192440]">{l.containerNumber ? formatContainerNumber(l.containerNumber) : "—"}</td>
                     <td className="py-2.5 pr-3 text-center">{l.quantity}</td>
-                    <td className="py-2.5 text-right">{formatNaira(l.unitPriceKobo * l.quantity)}</td>
+                    <td className="py-2.5 text-right">{formatMoney(l.unitPriceKobo * l.quantity, currency)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="text-sm">
-                <tr><td colSpan={3} className="pt-3 text-right text-ink-500">Subtotal</td><td className="pt-3 text-right">{formatNaira(totals.subtotalKobo)}</td></tr>
-                <tr><td colSpan={3} className="text-right text-ink-500">Delivery</td><td className="text-right">{formatNaira(totals.deliveryKobo)}</td></tr>
-                <tr className="font-bold"><td colSpan={3} className="text-right">Total</td><td className="text-right">{formatNaira(totals.totalKobo)}</td></tr>
+                <tr><td colSpan={3} className="pt-3 text-right text-ink-500">Subtotal</td><td className="pt-3 text-right">{formatMoney(totals.subtotalKobo, currency)}</td></tr>
+                <tr><td colSpan={3} className="text-right text-ink-500">Delivery</td><td className="text-right">{formatMoney(totals.deliveryKobo, currency)}</td></tr>
+                <tr className="font-bold"><td colSpan={3} className="text-right">Total</td><td className="text-right">{formatMoney(totals.totalKobo, currency)}</td></tr>
               </tfoot>
             </table>
           </div>

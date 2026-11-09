@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { env } from "./env";
 import { logger } from "./logger";
-import { formatNaira } from "./money";
+import { formatMoney, formatNaira } from "./money";
 import { site } from "@/content/site";
 
 // Transactional email via Resend (https://resend.com) — plain HTTPS API, no SDK.
@@ -123,8 +123,9 @@ export async function notifyOps(subject: string, fields: Record<string, string |
 }
 
 /** Emails an invoice PDF to the customer (staff on CC via MAIL_ADMIN_TO). Returns true on success. */
-export async function sendInvoiceEmail(opts: { to: string; customerName: string; invoiceNumber: string; orderReference: string | null; totalKobo: number; paid: boolean; dueAt?: Date | null; pdf: Buffer }) {
+export async function sendInvoiceEmail(opts: { to: string; customerName: string; invoiceNumber: string; orderReference: string | null; totalKobo: number; paid: boolean; dueAt?: Date | null; currency?: "NGN" | "USD"; pdf: Buffer }) {
   const first = opts.customerName.split(" ")[0];
+  const currency = opts.currency ?? "NGN";
   const due = opts.dueAt ? opts.dueAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Lagos" }) : null;
   const row = (k: string, v: string) => `<tr><td style="color:#5a6688;padding-right:16px">${k}</td><td>${v}</td></tr>`;
   const intro = opts.orderReference
@@ -145,12 +146,12 @@ export async function sendInvoiceEmail(opts: { to: string; customerName: string;
       `Your invoice ${opts.invoiceNumber}`,
       `<p style="font-size:14px;line-height:1.6">Hello ${esc(first)},</p>
 <p style="font-size:14px;line-height:1.6">${intro}</p>
-<table style="font-size:14px;margin:16px 0">${row("Invoice", `<b>${esc(opts.invoiceNumber)}</b>`)}${opts.orderReference ? row("Order reference", esc(opts.orderReference)) : ""}${row(opts.paid ? "Amount paid" : "Amount due", formatNaira(opts.totalKobo))}</table>
+<table style="font-size:14px;margin:16px 0">${row("Invoice", `<b>${esc(opts.invoiceNumber)}</b>`)}${opts.orderReference ? row("Order reference", esc(opts.orderReference)) : ""}${row(opts.paid ? "Amount paid" : "Amount due", formatMoney(opts.totalKobo, currency))}</table>
 ${payBlock}<p style="font-size:13px;color:#5a6688">Questions about this invoice? Simply reply to this email.</p>`,
     ),
     text: opts.paid
-      ? `Hello ${first}, your invoice ${opts.invoiceNumber}${opts.orderReference ? ` for order ${opts.orderReference}` : ""} (${formatNaira(opts.totalKobo)}) is attached. Reply to this email with any questions.`
-      : `Hello ${first}, your invoice ${opts.invoiceNumber} (${formatNaira(opts.totalKobo)}) is attached. Please pay by bank transfer to ${site.bank.name}, ${site.bank.accountName}, account ${site.bank.accountNumber}, using ${opts.invoiceNumber} as the reference${due ? `, by ${due}` : ""}. Reply to this email with your proof of payment.`,
+      ? `Hello ${first}, your invoice ${opts.invoiceNumber}${opts.orderReference ? ` for order ${opts.orderReference}` : ""} (${formatMoney(opts.totalKobo, currency)}) is attached. Reply to this email with any questions.`
+      : `Hello ${first}, your invoice ${opts.invoiceNumber} (${formatMoney(opts.totalKobo, currency)}) is attached. Please pay by bank transfer to ${site.bank.name}, ${site.bank.accountName}, account ${site.bank.accountNumber}, using ${opts.invoiceNumber} as the reference${due ? `, by ${due}` : ""}. Reply to this email with your proof of payment.`,
     attachments: [{ filename: `${opts.invoiceNumber}.pdf`, content: opts.pdf.toString("base64") }],
   });
 }
