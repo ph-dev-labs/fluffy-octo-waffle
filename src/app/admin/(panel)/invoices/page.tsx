@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/session";
 import { invoiceRecipient } from "@/lib/invoice/service";
-import { formatNaira } from "@/lib/money";
+import { formatMoney, formatNaira } from "@/lib/money";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Badge } from "@/components/admin/badges";
 
@@ -41,6 +41,7 @@ export default async function InvoicesPage() {
               const to = invoiceRecipient(inv);
               const paid = !!(inv.order?.paidAt ?? inv.paidAt);
               const href = inv.orderId ? `/admin/orders/${inv.orderId}` : `/admin/invoices/${inv.id}`;
+              const currency = (inv.currency as "NGN" | "USD") ?? "NGN";
               return (
                 <tr key={inv.id} className="hover:bg-ink-50">
                   <td className="px-4 py-3"><Link href={href} className="font-mono font-semibold text-brand-600 hover:underline">{inv.number}</Link></td>
@@ -49,7 +50,7 @@ export default async function InvoicesPage() {
                     <p className="text-xs text-ink-500">{to.email}</p>
                   </td>
                   <td className="px-4 py-3 text-ink-600">{inv.order ? `Order ${inv.order.reference}` : inv.quoteRequestId ? "Quote request" : "Manual"}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatNaira(to.totalKobo)}</td>
+                  <td className="px-4 py-3 text-right font-semibold">{formatMoney(to.totalKobo, currency)}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1.5">
                       {inv.status === "SENT" ? <Badge tone="green">sent</Badge> : <Badge tone="amber">draft</Badge>}

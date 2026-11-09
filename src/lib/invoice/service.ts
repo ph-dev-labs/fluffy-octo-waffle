@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { DEFAULT_DELIVERY_ZONES } from "@/lib/pricing";
 import { site } from "@/content/site";
 import { InvoiceDocument, type InvoiceData } from "./InvoiceDocument";
+import { type InvoiceCurrency } from "@/lib/money";
 
 export const INVOICEABLE_FULFILMENT = ["DELIVERED", "COLLECTED"] as const;
 
@@ -118,6 +119,7 @@ export async function buildInvoiceData(inv: FullInvoice): Promise<InvoiceData> {
     subtotalKobo: o.subtotalKobo,
     deliveryKobo: o.deliveryKobo,
     totalKobo: o.amountKobo,
+    currency: (inv.currency as InvoiceCurrency) ?? "NGN",
     note: inv.note,
   };
 }
@@ -137,6 +139,7 @@ function buildManualInvoiceData(inv: FullInvoice): InvoiceData {
     dueAt: inv.dueAt,
     lines,
     ...manualTotals(lines, delivery),
+    currency: (inv.currency as InvoiceCurrency) ?? "NGN",
     note: inv.note,
   };
 }

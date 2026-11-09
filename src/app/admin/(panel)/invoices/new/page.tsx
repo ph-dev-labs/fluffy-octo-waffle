@@ -22,6 +22,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
     customerPhone: quote?.phone ?? "",
     customerAddress: "",
     deliveryAddress: "",
+    currency: "NGN",
     deliveryNaira: "0",
     dueDate: dateInputValue(new Date(Date.now() + PAYMENT_DAYS * 86_400_000)),
     note: "",
